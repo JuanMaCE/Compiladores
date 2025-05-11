@@ -13,17 +13,17 @@ class Node:
 
     def return_info_str(self):
         type = ""
-        if tipo == 0:
+        if self.tipo == 0:
             type = "Inicio"
-        if tipo == 1:
+        if self.tipo == 1:
             type = "Entradad de datos"
-        if tipo == 2:
+        if self.tipo == 2:
             type = "Salida de datos"
-        if tipo == 3:
+        if self.tipo == 3:
             type = "Prcoeso"
-        if tipo == 4:
+        if self.tipo == 4:
             type = "Condicion"
-        if tipo == 5:
+        if self.tipo == 5:
             type = "Final"
 
         return "tipo: " + type + " | Informacion" + str(self.informacion)
@@ -32,4 +32,4 @@ class Node:
         return self.tipo
 
     def return_info(self):
-        return self.informacion
+        return str(self.informacion)

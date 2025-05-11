@@ -1,8 +1,10 @@
 from node import Node
 
 class Grafodirigido():
-    def __init__(self):
+    def __init__(self, cabeza: Node):
+        self.head = cabeza
         self.adyacencia = {}
+        self.adyacencia[self.head] = []
 
     def agregar_vertice(self, tipo: int, informacion: str) -> Node:
         new_node = Node(tipo, informacion)
@@ -22,11 +24,30 @@ class Grafodirigido():
         else:
             raise ValueError("Uno o ambos nodos no existen en el grafo")
 
+    def _caminos_grafo(self):
+        txt = self.head.return_info()
+        inicio = self.head
+        next = self.adyacencia[inicio][0]
+        return self.caminos_grafo(next, txt)
 
+    def caminos_grafo(self, node: Node, text: str):
+        text += " -> " + node.return_info()
+        if len(self.adyacencia[node]) == 2:
+            izquierda = self.adyacencia[node][0]
+            derecha = self.adyacencia[node][1]
+            self.caminos_grafo(izquierda, text)
+            self.caminos_grafo(derecha, text)
+
+        elif len(self.adyacencia[node]) == 1:
+            next = self.adyacencia[node][0]
+            text += " -> " + next.return_info()
+            return  self.caminos_grafo(next, text)
 
     def mostrar(self):
         txt = ""
-        for vertice, arista in self.adyacencia.items(): # esto muestra las aristas
-            txt += str(vertice)+ "->" + str(arista) + "\n"
-        return  txt
-
+        for clave, lista_adyacente in self.adyacencia.items():
+            txt += clave.return_info() + " -> "
+            for adyacente in lista_adyacente:
+                txt += adyacente.return_info() + " | "
+            txt += "\n"
+        return txt

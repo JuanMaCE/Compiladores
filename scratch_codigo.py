@@ -1,29 +1,31 @@
 from grafodirigdo import Grafodirigido
+from node import Node
+
+def agregar_datos(grafo: Grafodirigido, nodo1: Node):
+    nodo2 =  grafo.agregar_vertice(1, "i = 1")
+    nodo3 =  grafo.agregar_vertice(1, "i == 2")
+    nodo4 =  grafo.agregar_vertice(1, "si")
+    nodo5 =  grafo.agregar_vertice(1, "no")
+    nodo6 =  grafo.agregar_vertice(1, "error")
+    nodo7 =  grafo.agregar_vertice(1, "final")
 
 
-def agregar_datos(grafo: Grafodirigido):
-    grafo.agregar_vertice("inicio")
-    grafo.agregar_vertice("i = 1")
-    grafo.agregar_vertice("i == 2")
-    grafo.agregar_vertice("si")
-    grafo.agregar_vertice("no")
-    grafo.agregar_vertice("fin")
-    grafo.agregar_vertice("error")
+    grafo.agregar_arista(nodo1,nodo2)
+    grafo.agregar_arista(nodo2, nodo3)
+    grafo.agregar_arista(nodo3 ,nodo4)
+    grafo.agregar_arista(nodo3 ,nodo5)
+    grafo.agregar_arista(nodo4,nodo6)
+    grafo.agregar_arista(nodo5,nodo7)
 
-    grafo.agregar_arista("inicio","i = 1")
-    grafo.agregar_arista("i = 1", "i == 2")
-    grafo.agregar_arista("i == 2","si")
-    grafo.agregar_arista("i == 2","no" )
-    grafo.agregar_arista("si","fin")
-    grafo.agregar_arista("no", "error")
 
 
 
 def main():
-    grafo = Grafodirigido()
-    agregar_datos(grafo)
+    nodo1 = Node(1, "Inicio")
+    grafo = Grafodirigido(nodo1)
+    agregar_datos(grafo, nodo1)
 
     print(grafo.mostrar())
-    print("hola")
+    print(grafo._caminos_grafo())
 
 main()
