@@ -1,3 +1,5 @@
+import math
+
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QGraphicsView, QGraphicsScene, QGraphicsItem, QGraphicsLineItem,
@@ -190,13 +192,12 @@ class DiagramLine(QGraphicsLineItem):
         super().__init__(parent)
         self.start_item = start_item
         self.end_item = end_item
-        self.setPen(QPen(Qt.GlobalColor.black, 2, Qt.PenStyle.SolidLine))
         self.setZValue(-1)
+        self.arrow_size = 10
+        self.setPen(QPen(Qt.GlobalColor.black, 2, Qt.PenStyle.SolidLine))
 
-        # Conectar la línea a los items
         self.start_item.add_line(self)
         self.end_item.add_line(self)
-
         self.update_position()
 
     def update_position(self):
@@ -206,6 +207,25 @@ class DiagramLine(QGraphicsLineItem):
         start_point = self.start_item.get_connection_point(self.end_item)
         end_point = self.end_item.get_connection_point(self.start_item)
         self.setLine(QLineF(start_point, end_point))
+        self.prepareGeometryChange()
+
+    def paint(self, painter, option, widget=None):
+        line = self.line()
+        if line.length() == 0:
+            return
+
+        painter.setPen(self.pen())
+        painter.drawLine(line)
+
+        angle = line.angle() * (3.14159 / 180.0)
+        arrow_p1 = line.p2() - QPointF(self.arrow_size * 1.5 * math.cos(angle - 0.3),
+                                       self.arrow_size * 1.5 * math.sin(angle - 0.3))
+        arrow_p2 = line.p2() - QPointF(self.arrow_size * 1.5 * math.cos(angle + 0.3),
+                                       self.arrow_size * 1.5 * math.sin(angle + 0.3))
+        arrow_head = QPolygonF([line.p2(), arrow_p1, arrow_p2])
+
+        painter.setBrush(QBrush(Qt.GlobalColor.black))
+        painter.drawPolygon(arrow_head)
 
     def remove_from_items(self):
         if self.start_item:

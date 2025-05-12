@@ -21,7 +21,6 @@ colors = {
 
 shape_types = list(colors.keys())
 
-
 class Shape:
     def __init__(self, tipo, x, y, texto=""):
         self.tipo = tipo
@@ -57,16 +56,12 @@ class Shape:
             pygame.draw.polygon(surface, color, points)
             pygame.draw.polygon(surface, (0, 0, 0), points, 2)
         else:
-            pygame.draw.ellipse(surface, color, r) if self.tipo in ["INICIO", "FIN"] else pygame.draw.rect(surface,
-                                                                                                           color, r,
-                                                                                                           border_radius=10)
-            pygame.draw.ellipse(surface, (0, 0, 0), r, 2) if self.tipo in ["INICIO", "FIN"] else pygame.draw.rect(
-                surface, (0, 0, 0), r, 2, border_radius=10)
+            pygame.draw.ellipse(surface, color, r) if self.tipo in ["INICIO", "FIN"] else pygame.draw.rect(surface, color, r, border_radius=10)
+            pygame.draw.ellipse(surface, (0, 0, 0), r, 2) if self.tipo in ["INICIO", "FIN"] else pygame.draw.rect(surface, (0, 0, 0), r, 2, border_radius=10)
 
         text_surface = font.render(self.texto, True, (0, 0, 0))
         text_rect = text_surface.get_rect(center=r.center)
         surface.blit(text_surface, text_rect)
-
 
 class Connection:
     def __init__(self, a, b):
@@ -91,13 +86,11 @@ class Connection:
         ]
         pygame.draw.polygon(surface, (0, 0, 0), points)
 
-
 shapes = []
 connections = []
 selected_shape = None
 drag_offset = (0, 0)
 connecting_from = None
-
 
 def edit_text(shape):
     import tkinter as tk
@@ -107,7 +100,6 @@ def edit_text(shape):
     new_text = simpledialog.askstring("Editar Texto", "Nuevo contenido:", initialvalue=shape.texto)
     if new_text:
         shape.texto = new_text
-
 
 running = True
 while running:
@@ -124,19 +116,10 @@ while running:
             elif event.key == pygame.K_SPACE:
                 print("Secuencia:")
                 for i, s in enumerate(shapes):
-                    print(f"{i + 1}. {s.tipo}: {s.texto}")
-            elif event.key == pygame.K_DELETE:
-                for s in shapes:
-                    if s.selected:
-                        connections[:] = [c for c in connections if c.a != s and c.b != s]
-                        shapes.remove(s)
-                        break
-
+                    print(f"{i+1}. {s.tipo}: {s.texto}")
 
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:  # click izquierdo
-                for s in shapes:
-                    s.selected = False  # deseleccionar todas
                 for s in reversed(shapes):
                     if s.rect().collidepoint(event.pos):
                         selected_shape = s
@@ -148,6 +131,11 @@ while running:
                                 connecting_from = None
                             else:
                                 connecting_from = s
+                        break
+            elif event.button == 3:  # click derecho
+                for s in shapes:
+                    if s.rect().collidepoint(event.pos):
+                        edit_text(s)
                         break
 
         elif event.type == pygame.MOUSEBUTTONUP:
