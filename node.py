@@ -6,6 +6,7 @@ class Node:
     # 3 = Proceso
     # 4 = Condición
     # 5 = Final
+    # 6 = llamar funcion
 
     def __init__(self, tipo: int, informacion: str):
         self.tipo = tipo
@@ -25,7 +26,8 @@ class Node:
             type = "Condicion"
         if self.tipo == 5:
             type = "Final"
-
+        if self.tipo == 6:
+            type = "funcion"
         return "tipo: " + type + " | Informacion" + str(self.informacion)
 
     def return_tipo(self):

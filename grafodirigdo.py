@@ -51,3 +51,25 @@ class Grafodirigido():
                 txt += adyacente.return_info() + " | "
             txt += "\n"
         return txt
+
+
+    def eliminar(self, nodo: Node):
+        txt = ""
+        print("nodo a eliminar ->", nodo, nodo.return_info())
+
+        if nodo in self.adyacencia:
+            valor = self.adyacencia.pop(nodo)
+
+        for clave, lista_adyacente in self.adyacencia.items():
+            for adyacente in lista_adyacente:
+                if adyacente == nodo:
+                    print(adyacente.return_info(), "adyacente")
+                    lista_adyacente.remove(adyacente)
+
+
+            txt += "\n"
+        print("  --- ")
+        print("  --- ")
+        print("  --- ")
+
+        return valor
