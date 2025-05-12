@@ -1,6 +1,8 @@
 import pygame
 import sys
 import math
+from logic.node import Node
+from logic.grafodirigdo import Grafodirigido
 
 pygame.init()
 
@@ -24,7 +26,7 @@ colors = {
 shape_types = list(colors.keys())
 
 
-pasos = []
+
 
 
 class Shape:
@@ -113,6 +115,11 @@ def edit_text(shape):
     if new_text:
         shape.texto = new_text
 
+shape_beggin = shape_types[0]
+create_shape_beggin = Shape(shape_beggin, 50, 50)
+shapes.append(create_shape_beggin)
+node_inicio = Node(0, "INICIO", create_shape_beggin)
+grafo =  Grafodirigido(node_inicio)
 
 running = True
 while running:
@@ -123,9 +130,27 @@ while running:
             running = False
 
         elif event.type == pygame.KEYDOWN:
+            # generacion de figuras
             if pygame.K_1 <= event.key <= pygame.K_7:
-                shape_type = shape_types[event.key - pygame.K_1]
-                shapes.append(Shape(shape_type, 50, 50))
+                shape_beggin = shape_types[event.key - pygame.K_1]
+                create_shape_beggin = Shape(shape_beggin, 50, 50)
+                shapes.append(create_shape_beggin)
+                indice = event.key - pygame.K_1
+                if indice == 0:
+                    grafo.agregar_vertice(indice, "INICIO", create_shape_beggin)
+                elif indice == 1:
+                    grafo.agregar_vertice(indice, "Entrada", create_shape_beggin)
+                elif indice == 2:
+                    grafo.agregar_vertice(indice, "Salida", create_shape_beggin)
+                elif indice == 3:
+                    grafo.agregar_vertice(indice, "proceso", create_shape_beggin)
+                elif indice == 4:
+                    grafo.agregar_vertice(indice, "condicion", create_shape_beggin)
+                elif indice == 5:
+                    grafo.agregar_vertice(indice, "final", create_shape_beggin)
+                elif indice == 6:
+                    grafo.agregar_vertice(indice, "funcion", create_shape_beggin)
+
             elif event.key == pygame.K_SPACE:
                 print("Secuencia:")
                 for i, s in enumerate(shapes):
@@ -154,7 +179,6 @@ while running:
                                 connecting_from = s
                         break
             if event.button == 3:  # click derecho
-                print("oha")
                 for s in shapes:
                     s.selected = False
                 for s in reversed(shapes):
@@ -183,6 +207,6 @@ while running:
     pygame.display.flip()
     clock.tick(60)
 
-print(shapes)
+print(grafo.mostrar())
 pygame.quit()
 sys.exit()

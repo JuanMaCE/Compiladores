@@ -1,3 +1,4 @@
+
 class Node:
     # TIPO
     # 0  = INICIO de programa
@@ -8,9 +9,10 @@ class Node:
     # 5 = Final
     # 6 = llamar funcion
 
-    def __init__(self, tipo: int, informacion: str):
+    def __init__(self, tipo: int, informacion: str, shape):
         self.tipo = tipo
         self.informacion = informacion
+        self.shape = shape
 
     def return_info_str(self):
         type = ""

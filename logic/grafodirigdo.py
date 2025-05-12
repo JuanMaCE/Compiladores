@@ -6,8 +6,8 @@ class Grafodirigido():
         self.adyacencia = {}
         self.adyacencia[self.head] = []
 
-    def agregar_vertice(self, tipo: int, informacion: str) -> Node:
-        new_node = Node(tipo, informacion)
+    def agregar_vertice(self, tipo: int, informacion: str, shape) -> Node:
+        new_node = Node(tipo, informacion, shape)
         if new_node not in self.adyacencia:
             self.adyacencia[new_node] = []
         return new_node  # Importante para usar luego en aristas
