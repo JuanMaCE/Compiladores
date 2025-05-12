@@ -4,8 +4,7 @@ from node import Node
 
 
 def main():
-    nodos = []
-    aristas = []
+
     nodo1 = Node(1, "Inicio")
     grafo = Grafodirigido(nodo1)
 
@@ -25,10 +24,11 @@ def main():
     grafo.agregar_arista(nodo4,nodo7)
     grafo.agregar_arista(nodo5,nodo6)
 
-    grafo.eliminar(nodo5)
-
-
     print(grafo.mostrar())
-    print(grafo._caminos_grafo())
+    print(" ----- ")
+    print(" ----- ")
+    print(" ")
+    grafo.eliminar(nodo5)
+    print(grafo.mostrar())
 
 main()
