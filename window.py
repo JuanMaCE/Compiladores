@@ -1,203 +1,217 @@
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QLabel,
-    QGraphicsView, QGraphicsScene, QGraphicsItem, QGraphicsRectItem,
-    QGraphicsPolygonItem, QGraphicsTextItem, QTextEdit, QGraphicsEllipseItem,
-    QGraphicsPathItem, QMenu, QInputDialog
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+    QGraphicsView, QGraphicsScene, QGraphicsItem, QGraphicsLineItem,
+    QGraphicsTextItem, QTextEdit, QDockWidget, QToolBar, QListWidget,
+    QListWidgetItem, QMenu, QInputDialog, QPushButton
 )
 from PyQt6.QtGui import (
     QBrush, QPen, QColor, QPolygonF, QPainterPath, QFont, QPainter,
-    QTextCursor, QAction, QTransform
+    QTextCursor, QAction, QTransform, QIcon
 )
 from PyQt6.QtCore import Qt, QPointF, QLineF, QRectF, pyqtSignal
 import sys
-import math
+from collections import defaultdict
 
 
-class Arrow(QGraphicsPathItem):
-    def __init__(self, start_item, end_item, parent=None):
+class DiagramItem(QGraphicsItem):
+    def __init__(self, item_type, parent=None):
         super().__init__(parent)
-        self.start_item = start_item
-        self.end_item = end_item
-        self.setZValue(-1)
-        self.setPen(QPen(QColor("#2C3E50"), 2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
-        self.setBrush(QBrush(QColor("#2C3E50")))
-        self.arrow_size = 10
-        self.update_position()
-
-    def update_position(self):
-        if not self.start_item or not self.end_item:
-            return
-
-        # Obtener puntos de conexión entre los elementos
-        start_pos = self.start_item.sceneBoundingRect().center()
-        end_pos = self.end_item.sceneBoundingRect().center()
-
-        # Calcular línea entre los centros
-        line = QLineF(start_pos, end_pos)
-
-        # Ajustar los puntos para que la flecha conecte con los bordes
-        start_rect = self.start_item.sceneBoundingRect()
-        end_rect = self.end_item.sceneBoundingRect()
-        start_point = self.calculate_intersection(start_rect, line)
-        end_point = self.calculate_intersection(end_rect, line.reversed())
-
-        if not start_point or not end_point:
-            start_point = start_pos
-            end_point = end_pos
-        # Linea de flecha no sirve ptm
-        self.set_line(start_point, end_point)
-    def calculate_intersection(self, rect, line):
-        path = QPainterPath()
-        path.addRect(rect)
-        shape = path.toFillPolygon()
-        polygon = QPolygonF(shape)
-
-        for i in range(polygon.size()):
-            p1 = polygon.at(i)
-            p2 = polygon.at((i + 1) % polygon.size())
-            poly_line = QLineF(p1, p2)
-            intersect_point = QPointF()
-            if line.intersects(poly_line, intersect_point) == QLineF.IntersectType.BoundedIntersection:
-                return intersect_point
-        return None
-
-    def set_line(self, start_point, end_point):
-        path = QPainterPath()
-        path.moveTo(start_point)
-        path.lineTo(end_point)
-        angle = math.atan2(end_point.y() - start_point.y(), end_point.x() - start_point.x())
-        arrow_p1 = end_point - QPointF(math.cos(angle + math.pi / 6) * self.arrow_size,
-            math.sin(angle + math.pi / 6) * self.arrow_size)
-        arrow_p2 = end_point - QPointF(math.cos(angle - math.pi / 6) * self.arrow_size,
-            math.sin(angle - math.pi / 6) * self.arrow_size)
-        path.moveTo(end_point)
-        path.lineTo(arrow_p1)
-        path.moveTo(end_point)
-        path.lineTo(arrow_p2)
-        self.setPath(path)
-
-
-class FlowItem(QGraphicsItem):
-    def __init__(self, label, item_type, shape="rect", color="#D5F5E3"):
-        super().__init__()
-        self.label = label
         self.item_type = item_type
-        self.shape = shape
-        self.color = color
+        self.lines = []
         self.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
             QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
             QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges
         )
-        self.setAcceptHoverEvents(True)
 
-        # Texto editable Igual guarda de que tipo es osea inicio y asi
-        self.text_item = QGraphicsTextItem(label, self)
+        self.text_item = QGraphicsTextItem(self)
+        self.text_item.setPlainText(item_type)
         self.text_item.setTextInteractionFlags(Qt.TextInteractionFlag.TextEditorInteraction)
-        self.text_item.setDefaultTextColor(QColor("#2C3E50"))
-        self.text_item.setPos(10, 10)
-        # Esto si lo podemos ir viendo
-        # Configurar fuente
-        font = QFont("Arial", 8)
-        self.text_item.setFont(font)
-        # Conexiones
-        self.input_arrows = []
-        self.output_arrows = []
-        # Ajustar tamaño según el texto
+        self.text_item.setDefaultTextColor(Qt.GlobalColor.black)
+        self.text_item.setFont(QFont("Arial", 10))
+
+        self.width = 120
+        self.height = 60
         self.adjust_size()
+
     def adjust_size(self):
         text_width = self.text_item.boundingRect().width() + 20
         text_height = self.text_item.boundingRect().height() + 20
+        self.width = max(self.width, text_width)
+        self.height = max(self.height, text_height)
+        self.center_text()
 
-        # Tamaño mínimo
-        self.width = max(100, text_width)
-        self.height = max(50, text_height)
-        # Centrar texto
-        text_x = (self.width - self.text_item.boundingRect().width()) / 2
-        text_y = (self.height - self.text_item.boundingRect().height()) / 2
-        self.text_item.setPos(text_x, text_y)
+    def center_text(self):
+        text_rect = self.text_item.boundingRect()
+        self.text_item.setPos(
+            (self.width - text_rect.width()) / 2,
+            (self.height - text_rect.height()) / 2
+        )
+
+    def add_line(self, line):
+        self.lines.append(line)
+
+    def remove_line(self, line):
+        if line in self.lines:
+            self.lines.remove(line)
+
+    def remove_all_lines(self):
+        for line in list(self.lines):
+            if line.scene():
+                line.scene().removeItem(line)
+        self.lines.clear()
+
+    def itemChange(self, change, value):
+        if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange and self.scene():
+            for line in self.lines:
+                line.update_position()
+        return super().itemChange(change, value)
+
+    def get_connection_point(self, to_item=None):
+        my_center = self.scenePos() + QPointF(self.width / 2, self.height / 2)
+
+        if to_item is None:
+            return my_center
+
+        other_center = to_item.scenePos() + QPointF(to_item.width / 2, to_item.height / 2)
+        direction = other_center - my_center
+        if direction.x() == 0 and direction.y() == 0:
+            return my_center
+
+        length = (direction.x() ** 2 + direction.y() ** 2) ** 0.5
+        direction = QPointF(direction.x() / length, direction.y() / length)
+
+        if abs(direction.x()) > abs(direction.y()):
+            x = self.width / 2 if direction.x() > 0 else -self.width / 2
+            y = x * direction.y() / direction.x()
+        else:
+            y = self.height / 2 if direction.y() > 0 else -self.height / 2
+            x = y * direction.x() / direction.y()
+
+        return my_center + QPointF(x, y)
+
+
+class FlowItem(DiagramItem):
+    def __init__(self, label, item_type, shape="rect", color="#D5F5E3"):
+        super().__init__(item_type)
+        self.label = label
+        self.shape = shape
+        self.color = color
+        self.set_text(label)
+
+        if shape == "diamond":
+            self.width = 100
+            self.height = 80
+        elif shape == "ellipse":
+            self.width = 100
+            self.height = 60
+
+        self.adjust_size()
 
     def boundingRect(self):
         return QRectF(0, 0, self.width, self.height)
 
     def paint(self, painter, option, widget=None):
-        # Dibujar sombra pero no me convence
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor(0, 0, 0, 50))
-        painter.drawRoundedRect(3, 3, self.width, self.height, 10, 10)
-        # Dibujar forma principal
+        painter.setBrush(QBrush(QColor(self.color)))
+        painter.setPen(QPen(Qt.GlobalColor.black, 2))
+
         if self.isSelected():
             painter.setPen(QPen(QColor("#3498DB"), 3, Qt.PenStyle.DashLine))
-        else:
-            painter.setPen(QPen(QColor("#2C3E50"), 2))
-        painter.setBrush(QBrush(QColor(self.color)))
-        self.draw_shape(painter)
 
-    def draw_shape(self, painter):
         if self.shape == "rect":
             painter.drawRoundedRect(0, 0, self.width, self.height, 10, 10)
         elif self.shape == "trapezoid":
-            points = [
-                QPointF(self.width * 0.2, 0),
-                QPointF(self.width * 0.8, 0),
-                QPointF(self.width, self.height),
-                QPointF(0, self.height)
-            ]
-            painter.drawPolygon(QPolygonF(points))
+            path = QPainterPath()
+            path.moveTo(self.width * 0.2, 0)
+            path.lineTo(self.width * 0.8, 0)
+            path.lineTo(self.width, self.height)
+            path.lineTo(0, self.height)
+            path.closeSubpath()
+            painter.drawPath(path)
         elif self.shape == "parallelogram":
-            points = [
-                QPointF(self.width * 0.2, 0),
-                QPointF(self.width, 0),
-                QPointF(self.width * 0.8, self.height),
-                QPointF(0, self.height)
-            ]
-            painter.drawPolygon(QPolygonF(points))
+            path = QPainterPath()
+            path.moveTo(self.width * 0.2, 0)
+            path.lineTo(self.width, 0)
+            path.lineTo(self.width * 0.8, self.height)
+            path.lineTo(0, self.height)
+            path.closeSubpath()
+            painter.drawPath(path)
         elif self.shape == "diamond":
-            points = [
-                QPointF(self.width / 2, 0),
-                QPointF(self.width, self.height / 2),
-                QPointF(self.width / 2, self.height),
-                QPointF(0, self.height / 2)
-            ]
-            painter.drawPolygon(QPolygonF(points))
+            path = QPainterPath()
+            path.moveTo(self.width / 2, 0)
+            path.lineTo(self.width, self.height / 2)
+            path.lineTo(self.width / 2, self.height)
+            path.lineTo(0, self.height / 2)
+            path.closeSubpath()
+            painter.drawPath(path)
         elif self.shape == "ellipse":
             painter.drawEllipse(0, 0, self.width, self.height)
 
-    def itemChange(self, change, value):
-        if change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:
-            for arrow in self.input_arrows + self.output_arrows:
-                if arrow in self.scene().items():
-                    arrow.update_position()
+    def set_text(self, text):
+        self.text_item.setPlainText(text)
+        self.adjust_size()
 
-        return super().itemChange(change, value)
+    def shape(self):
+        path = QPainterPath()
+        if self.shape == "ellipse":
+            path.addEllipse(0, 0, self.width, self.height)
+        elif self.shape == "diamond":
+            path.moveTo(self.width / 2, 0)
+            path.lineTo(self.width, self.height / 2)
+            path.lineTo(self.width / 2, self.height)
+            path.lineTo(0, self.height / 2)
+            path.closeSubpath()
+        elif self.shape == "trapezoid":
+            path.moveTo(self.width * 0.2, 0)
+            path.lineTo(self.width * 0.8, 0)
+            path.lineTo(self.width, self.height)
+            path.lineTo(0, self.height)
+            path.closeSubpath()
+        elif self.shape == "parallelogram":
+            path.moveTo(self.width * 0.2, 0)
+            path.lineTo(self.width, 0)
+            path.lineTo(self.width * 0.8, self.height)
+            path.lineTo(0, self.height)
+            path.closeSubpath()
+        else:  # rect
+            path.addRoundedRect(0, 0, self.width, self.height, 10, 10)
+        return path
 
-    def get_text(self):
-        return f"{self.item_type}: {self.text_item.toPlainText()}"
-
-    def mouseDoubleClickEvent(self, event):
-        self.text_item.setFocus()
-        cursor = self.text_item.textCursor()
-        cursor.select(QTextCursor.SelectionType.Document)
-        self.text_item.setTextCursor(cursor)
-        super().mouseDoubleClickEvent(event)
-
-    def contextMenuEvent(self, event):
-        menu = QMenu()
-        delete_action = QAction("Eliminar", self)
-        delete_action.triggered.connect(lambda: self.scene().remove_item(self))
-        edit_action = QAction("Editar texto", self)
-        edit_action.triggered.connect(self.edit_text)
-        menu.addAction(edit_action)
-        menu.addAction(delete_action)
-        menu.exec(event.screenPos())
     def edit_text(self):
         text, ok = QInputDialog.getText(
             None, "Editar texto", "Nuevo texto:", text=self.text_item.toPlainText()
         )
-        if ok:
-            self.text_item.setPlainText(text)
-            self.adjust_size()
-            self.update()
+        if ok and text:
+            self.set_text(text)
+
+
+class DiagramLine(QGraphicsLineItem):
+    def __init__(self, start_item, end_item, parent=None):
+        super().__init__(parent)
+        self.start_item = start_item
+        self.end_item = end_item
+        self.setPen(QPen(Qt.GlobalColor.black, 2, Qt.PenStyle.SolidLine))
+        self.setZValue(-1)
+
+        # Conectar la línea a los items
+        self.start_item.add_line(self)
+        self.end_item.add_line(self)
+
+        self.update_position()
+
+    def update_position(self):
+        if not (self.start_item and self.end_item):
+            return
+
+        start_point = self.start_item.get_connection_point(self.end_item)
+        end_point = self.end_item.get_connection_point(self.start_item)
+        self.setLine(QLineF(start_point, end_point))
+
+    def remove_from_items(self):
+        if self.start_item:
+            self.start_item.remove_line(self)
+        if self.end_item:
+            self.end_item.remove_line(self)
 
 
 class FlowChartScene(QGraphicsScene):
@@ -206,264 +220,237 @@ class FlowChartScene(QGraphicsScene):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setSceneRect(0, 0, 800, 600)
-        self.setBackgroundBrush(QBrush(QColor("#F5F7FA")))
+        self.setBackgroundBrush(QBrush(Qt.GlobalColor.white))
+        self.current_mode = "select"
+        self.connection_start_item = None
+        self.temp_line = None
 
-        # Variables para la conexión
-        self.start_item = None
-        self.temp_arrow = None
+    def set_mode(self, mode):
+        self.current_mode = mode
+        if self.connection_start_item:
+            self.connection_start_item.setSelected(False)
+            self.connection_start_item = None
+        if self.temp_line:
+            self.removeItem(self.temp_line)
+            self.temp_line = None
 
     def mousePressEvent(self, event):
-        item = self.itemAt(event.scenePos(), QTransform())
+        items_at_pos = self.items(event.scenePos())
+        item = next((i for i in items_at_pos if isinstance(i, FlowItem)), None)
 
         if event.button() == Qt.MouseButton.LeftButton:
-            if isinstance(item, FlowItem):
-                if self.start_item is None:
-                    # Primer clic - seleccionar elemento de inicio
-                    self.start_item = item
-                    item.setSelected(True)
-                else:
-                    # Segundo clic - crear conexión
-                    if item != self.start_item:
-                        arrow = Arrow(self.start_item, item)
-                        self.addItem(arrow)
-                        self.start_item.output_arrows.append(arrow)
-                        item.input_arrows.append(arrow)
-                        self.start_item = None
+            if self.current_mode == "connect":
+                if isinstance(item, FlowItem):
+                    if self.connection_start_item is None:
+                        self.connection_start_item = item
+                        item.setSelected(True)
+                        self.temp_line = QGraphicsLineItem()
+                        self.temp_line.setPen(QPen(Qt.GlobalColor.black, 2, Qt.PenStyle.DashLine))
+                        self.addItem(self.temp_line)
                     else:
-                        self.start_item = None
-            else:
-                self.start_item = None
-                self.clearSelection()
+
+                        if item != self.connection_start_item:
+                            line = DiagramLine(self.connection_start_item, item)
+                            self.addItem(line)
+
+                        self.connection_start_item.setSelected(False)
+                        self.removeItem(self.temp_line)
+                        self.connection_start_item = None
+                        self.temp_line = None
+                    return
+
+            elif self.current_mode == "erase":
+                if item:
+                    if isinstance(item, DiagramLine):
+                        item.remove_from_items()
+                        self.removeItem(item)
+                    elif isinstance(item, FlowItem):
+                        self.removeItem(item)
+                return
 
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
-        if self.start_item and not self.temp_arrow:
-            # Crear flecha temporal durante el arrastre peeeeero no conecta con otro bloque
-            self.temp_arrow = Arrow(self.start_item, None)
-            self.addItem(self.temp_arrow)
-
-        if self.temp_arrow:
-            start_pos = self.start_item.sceneBoundingRect().center()
+        if self.current_mode == "connect" and self.connection_start_item and self.temp_line:
+            start_point = self.connection_start_item.get_connection_point(None)
             end_pos = event.scenePos()
+            self.temp_line.setLine(QLineF(start_point, end_pos))
 
-            path = QPainterPath()
-            path.moveTo(start_pos)
-            path.lineTo(end_pos)
-            # Dibujar punta de flecha
-            angle = math.atan2(end_pos.y() - start_pos.y(), end_pos.x() - start_pos.x())
-            arrow_size = 10
-            arrow_p1 = end_pos - QPointF(math.cos(angle + math.pi / 6) * arrow_size,
-                math.sin(angle + math.pi / 6) * arrow_size)
-            arrow_p2 = end_pos - QPointF(math.cos(angle - math.pi / 6) * arrow_size,
-                math.sin(angle - math.pi / 6) * arrow_size)
-
-            path.moveTo(end_pos)
-            path.lineTo(arrow_p1)
-            path.moveTo(end_pos)
-            path.lineTo(arrow_p2)
-            self.temp_arrow.setPath(path)
         super().mouseMoveEvent(event)
 
-    def mouseReleaseEvent(self, event):
-        if self.temp_arrow:
-            item = self.itemAt(event.scenePos(), QTransform())
-            if isinstance(item, FlowItem) and item != self.start_item:
-                # Crear conexión permanente
-                self.removeItem(self.temp_arrow)
-                arrow = Arrow(self.start_item, item)
-                self.addItem(arrow)
-                self.start_item.output_arrows.append(arrow)
-                item.input_arrows.append(arrow)
-            else:
-                # Eliminar flecha temporal pero igual no establece aun la fija
-                self.removeItem(self.temp_arrow)
+    def get_execution_sequence(self):
+        nodes = []
+        edges = defaultdict(list)
 
-            self.temp_arrow = None
-            self.start_item = None
+        for item in self.items():
+            if isinstance(item, FlowItem):
+                nodes.append(item)
+            elif isinstance(item, DiagramLine):
+                edges[item.start_item].append(item.end_item)
 
-        super().mouseReleaseEvent(event)
+        start_nodes = [n for n in nodes if n.item_type == "INICIO"]
+        if not start_nodes:
+            return []
 
-    def remove_item(self, item):
-        for arrow in item.input_arrows[:]:
-            if arrow.start_item and arrow in arrow.start_item.output_arrows:
-                arrow.start_item.output_arrows.remove(arrow)
-            self.removeItem(arrow)
-        for arrow in item.output_arrows[:]:
-            if arrow.end_item and arrow in arrow.end_item.input_arrows:
-                arrow.end_item.input_arrows.remove(arrow)
-            self.removeItem(arrow)
+        visited = set()
+        sequence = []
 
-        self.removeItem(item)
-        self.item_removed.emit(item)
+        def dfs(node):
+            if node in visited:
+                return
+            visited.add(node)
+            sequence.append(node)
+            for neighbor in edges.get(node, []):
+                dfs(neighbor)
+
+        dfs(start_nodes[0])
+        return sequence
 
 
-class FlowChartApp(QWidget):
+class ShapeListWidget(QListWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.add_shapes()
+        self.setDragEnabled(True)
+
+    def add_shapes(self):
+        shapes = [
+            ("INICIO", "ellipse", "#E74C3C"),
+            ("FIN", "ellipse", "#E74C3C"),
+            ("PROCESO", "rect", "#3498DB"),
+            ("DECISIÓN", "diamond", "#2ECC71"),
+            ("ENTRADA", "parallelogram", "#9B59B6"),
+            ("SALIDA", "trapezoid", "#F39C12")
+        ]
+
+        for name, shape, color in shapes:
+            item = QListWidgetItem(name)
+            item.setData(Qt.ItemDataRole.UserRole, (shape, color, name))
+            self.addItem(item)
+
+
+class FlowChartApp(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("COMPILADOR FINAL")
+        self.setWindowTitle("Diagrama de Flujo - Compilador")
         self.setGeometry(100, 100, 1200, 700)
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(5, 5, 5, 5)
-        self.setup_tools_panel(layout)
-        # Panel del centro
-        self.setup_flowchart_view(layout)
-        # Panel derecho se acuerdan de lo que dijo el inge de agregar el ensamblador
-        self.setup_output_panel(layout)
+        self.initUI()
 
-    def setup_tools_panel(self, main_layout):
-        tools_panel = QVBoxLayout()
-        tools_panel.setSpacing(10)
-        main_layout.addLayout(tools_panel, 1)
-        title = QLabel("Elementos del Diagrama")
-        title.setStyleSheet("font-weight: bold; font-size: 14px;")
-        tools_panel.addWidget(title)
-        shapes = {
-            "INICIO/FIN": ("ellipse", "#E74C3C"),
-            "PROCESO": ("rect", "#3498DB"),
-            "DECISIÓN": ("diamond", "#2ECC71"),
-            "ENTRADA": ("parallelogram", "#9B59B6"),
-            "SALIDA": ("trapezoid", "#F39C12")
-        }
+    def initUI(self):
+        self.setup_central_widget()
+        self.setup_tools_panel()
+        self.setup_toolbar()
+        self.statusBar().showMessage("Modo Selección")
 
-        for label, (shape, color) in shapes.items():
-            btn = QPushButton(label)
-            btn.setStyleSheet(f"""
-                QPushButton {{
-                    background-color: {color};
-                    color: white;
-                    border: none;
-                    padding: 8px;
-                    border-radius: 4px;
-                }}
-                QPushButton:hover {{
-                    background-color: {self.darken_color(color)};
-                }}
-            """)
-            btn.clicked.connect(lambda _, s=shape, c=color, l=label: self.add_shape(s, c, l.split("/")[0]))
-            tools_panel.addWidget(btn)
-        tools_panel.addStretch()
-        clear_btn = QPushButton("Limpiar Diagrama")
-        clear_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #95A5A6;
-                color: white;
-                border: none;
-                padding: 8px;
-                border-radius: 4px;
-            }
-            QPushButton:hover {
-                background-color: #7F8C8D;
-            }
-        """)
-        clear_btn.clicked.connect(self.clear_diagram)
-        tools_panel.addWidget(clear_btn)
+    def setup_central_widget(self):
+        central_widget = QWidget()
+        layout = QHBoxLayout(central_widget)
 
-    def darken_color(self, hex_color, factor=0.8):
-        """Oscurece un color hexadecimal"""
-        color = QColor(hex_color)
-        return color.darker(int(100 / factor)).name()
-
-    def setup_flowchart_view(self, main_layout):
         self.scene = FlowChartScene()
         self.view = QGraphicsView(self.scene)
         self.view.setRenderHint(QPainter.RenderHint.Antialiasing)
-        self.view.setRenderHint(QPainter.RenderHint.TextAntialiasing)
         self.view.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
-        self.view.setStyleSheet("background: transparent; border: 1px solid #BDC3C7; border-radius: 4px;")
-        main_layout.addWidget(self.view, 3)
+        layout.addWidget(self.view, 3)
 
-    def setup_output_panel(self, main_layout):
-        right_panel = QVBoxLayout()
-        right_panel.setSpacing(10)
-        main_layout.addLayout(right_panel, 1)
-        title = QLabel("Código Generado")
-        title.setStyleSheet("font-weight: bold; font-size: 14px;")
-        right_panel.addWidget(title)
+        output_panel = QVBoxLayout()
+
         self.output_text = QTextEdit()
+        self.output_text.setReadOnly(False)
         self.output_text.setStyleSheet("""
             QTextEdit {
-                background-color: #ECF0F1;
-                border: 1px solid #BDC3C7;
-                border-radius: 4px;
-                padding: 5px;
+                background: white;
+                border: 1px solid #ccc;
                 font-family: monospace;
             }
         """)
-        self.output_text.setReadOnly(False)
-        right_panel.addWidget(self.output_text, 1)
-        compile_btn = QPushButton("Generar Secuencia")
-        compile_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27AE60;
-                color: white;
-                border: none;
-                padding: 10px;
-                border-radius: 4px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2ECC71;
-            }
-        """)
-        compile_btn.clicked.connect(self.compile_flowchart)
-        right_panel.addWidget(compile_btn)
-        export_btn = QPushButton("Exportar Diagrama")
-        export_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #2980B9;
-                color: white;
-                border: none;
-                padding: 10px;
-                border-radius: 4px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #3498DB;
-            }
-        """)
-        export_btn.clicked.connect(self.export_diagram)
-        right_panel.addWidget(export_btn)
+        output_panel.addWidget(QLabel("Código Generado:"))
+        output_panel.addWidget(self.output_text)
 
-    def add_shape(self, shape, color, label):
-        item = FlowItem(label, label, shape, color)
-        item.setPos(200, 200)
-        self.scene.addItem(item)
+        btn_generate = QPushButton("Generar Secuencia")
+        btn_generate.clicked.connect(self.generate_sequence)
+        output_panel.addWidget(btn_generate)
 
-    def compile_flowchart(self):
-        flow = []
-        for item in self.scene.items():
-            if isinstance(item, FlowItem):
-                flow.append(item.get_text())
-        flow.sort(key=lambda x: x.startswith("INICIO"), reverse=True)
-        self.output_text.setPlainText("Secuencia de acciones:\n\n" + "\n".join(flow))
+        layout.addLayout(output_panel, 1)
+        self.setCentralWidget(central_widget)
+
+    def setup_tools_panel(self):
+        dock = QDockWidget("Formas", self)
+        shape_widget = QWidget()
+        layout = QVBoxLayout(shape_widget)
+
+        self.shape_list = ShapeListWidget()
+        self.shape_list.itemDoubleClicked.connect(self.add_shape)
+        layout.addWidget(self.shape_list)
+
+        btn_select = QPushButton("Modo Selección")
+        btn_select.clicked.connect(self.set_select_mode)
+
+        btn_connect = QPushButton("Modo Conexión")
+        btn_connect.clicked.connect(self.set_connect_mode)
+
+        btn_erase = QPushButton("Modo Borrar")
+        btn_erase.clicked.connect(self.set_erase_mode)
+
+        layout.addWidget(btn_select)
+        layout.addWidget(btn_connect)
+        layout.addWidget(btn_erase)
+        layout.addStretch()
+
+        dock.setWidget(shape_widget)
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, dock)
+
+    def setup_toolbar(self):
+        toolbar = self.addToolBar("Herramientas")
+
+        act_clear = QAction(QIcon.fromTheme("edit-clear"), "Limpiar Todo", self)
+        act_clear.triggered.connect(self.clear_diagram)
+        toolbar.addAction(act_clear)
+
+    def add_shape(self, item):
+        shape, color, item_type = item.data(Qt.ItemDataRole.UserRole)
+        new_item = FlowItem(item_type, item_type, shape, color)
+
+        view_center = self.view.mapToScene(self.view.viewport().rect().center())
+        new_item.setPos(view_center.x() - new_item.width / 2,
+                        view_center.y() - new_item.height / 2)
+
+        self.scene.addItem(new_item)
+
+    def set_select_mode(self):
+        self.scene.set_mode("select")
+        self.view.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
+        self.statusBar().showMessage("Modo Selección")
+
+    def set_connect_mode(self):
+        self.scene.set_mode("connect")
+        self.view.setDragMode(QGraphicsView.DragMode.NoDrag)
+        self.statusBar().showMessage("Modo Conexión - Seleccione el primer elemento")
+
+    def set_erase_mode(self):
+        self.scene.set_mode("erase")
+        self.view.setDragMode(QGraphicsView.DragMode.NoDrag)
+        self.statusBar().showMessage("Modo Borrar - Haga clic en elementos para eliminarlos")
+
+    def generate_sequence(self):
+        sequence = self.scene.get_execution_sequence()
+        if not sequence:
+            self.output_text.setPlainText("No se encontró una secuencia válida.\nAsegúrese de tener un nodo INICIO.")
+            return
+
+        output = "Secuencia de ejecución:\n"
+        for i, item in enumerate(sequence, 1):
+            output += f"{i}. {item.item_type}: {item.text_item.toPlainText()}\n"
+
+        self.output_text.setPlainText(output)
 
     def clear_diagram(self):
         self.scene.clear()
         self.output_text.clear()
 
-    def export_diagram(self):
-        self.output_text.append("Exportando diagrama... (función no implementada)")
-
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
-
-    app.setStyleSheet("""
-        QWidget {
-            font-family: Arial;
-        }
-        QMenu {
-            background-color: white;
-            border: 1px solid #BDC3C7;
-        }
-        QMenu::item:selected {
-            background-color: #3498DB;
-            color: white;
-        }
-    """)
-
     window = FlowChartApp()
     window.show()
     sys.exit(app.exec())
