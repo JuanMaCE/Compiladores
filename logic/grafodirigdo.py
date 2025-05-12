@@ -1,4 +1,4 @@
-from node import Node
+from logic.node import Node
 
 class Grafodirigido():
     def __init__(self, cabeza: Node):
