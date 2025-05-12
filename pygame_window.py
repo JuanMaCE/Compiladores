@@ -12,14 +12,19 @@ clock = pygame.time.Clock()
 
 colors = {
     "INICIO": (220, 70, 70),
-    "FIN": (220, 70, 70),
-    "PROCESO": (70, 130, 180),
-    "DECISIÓN": (50, 200, 120),
     "ENTRADA": (150, 100, 200),
     "SALIDA": (240, 160, 50),
+    "PROCESO": (70, 130, 180),
+    "DECISIÓN": (50, 200, 120),
+    "FIN": (220, 70, 70),
+    "CallMeBaby" : (220, 130, 70)
+
 }
 
 shape_types = list(colors.keys())
+
+
+pasos = []
 
 
 class Shape:
@@ -118,7 +123,7 @@ while running:
             running = False
 
         elif event.type == pygame.KEYDOWN:
-            if pygame.K_1 <= event.key <= pygame.K_6:
+            if pygame.K_1 <= event.key <= pygame.K_7:
                 shape_type = shape_types[event.key - pygame.K_1]
                 shapes.append(Shape(shape_type, 50, 50))
             elif event.key == pygame.K_SPACE:
@@ -131,7 +136,6 @@ while running:
                         connections[:] = [c for c in connections if c.a != s and c.b != s]
                         shapes.remove(s)
                         break
-
 
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:  # click izquierdo
@@ -148,6 +152,16 @@ while running:
                                 connecting_from = None
                             else:
                                 connecting_from = s
+                        break
+            if event.button == 3:  # click derecho
+                print("oha")
+                for s in shapes:
+                    s.selected = False
+                for s in reversed(shapes):
+                    if s.rect().collidepoint(event.pos):
+                        selected_shape = s
+                        s.selected = True
+                        edit_text(s)
                         break
 
         elif event.type == pygame.MOUSEBUTTONUP:
@@ -169,5 +183,6 @@ while running:
     pygame.display.flip()
     clock.tick(60)
 
+print(shapes)
 pygame.quit()
 sys.exit()
