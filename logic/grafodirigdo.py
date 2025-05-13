@@ -6,23 +6,25 @@ class Grafodirigido():
         self.adyacencia = {}
         self.adyacencia[self.head] = []
 
-    def agregar_vertice(self, tipo: int, informacion: str, shape) -> Node:
-        new_node = Node(tipo, informacion, shape)
+    def agregar_vertice(self, id: int, tipo: int, informacion: str, shape) -> Node:
+        new_node = Node(id, tipo, informacion, shape)
         if new_node not in self.adyacencia:
             self.adyacencia[new_node] = []
         return new_node  # Importante para usar luego en aristas
 
-    def obtener_nodo_por_info(self, informacion: str) -> Node:
+    def obtener_nodo_por_id(self, id: int) -> Node:
         for nodo in self.adyacencia:
-            if nodo.informacion == informacion:
+            print(nodo.return_id(), id)
+            if nodo.return_id() == id:
                 return nodo
         return None  # Si no existe
 
-    def agregar_arista(self, origen: Node, destino: Node):
-        if origen in self.adyacencia and destino in self.adyacencia:
-            self.adyacencia[origen].append(destino)
-        else:
-            raise ValueError("Uno o ambos nodos no existen en el grafo")
+    def agregar_arista(self, origen: int, destino: int):
+        nodo_inicio = self.obtener_nodo_por_id(origen)
+        nodo_final = self.obtener_nodo_por_id(destino)
+        self.adyacencia[nodo_inicio].append(nodo_final)
+
+
 
     def _caminos_grafo(self):
         txt = self.head.return_info()
@@ -51,6 +53,8 @@ class Grafodirigido():
                 txt += adyacente.return_info() + " | "
             txt += "\n"
         return txt
+
+
 
 
     def eliminar(self, nodo: Node):

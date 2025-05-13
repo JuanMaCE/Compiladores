@@ -9,7 +9,8 @@ class Node:
     # 5 = Final
     # 6 = llamar funcion
 
-    def __init__(self, tipo: int, informacion: str, shape):
+    def __init__(self, id: int, tipo: int, informacion: str, shape):
+        self.id = id
         self.tipo = tipo
         self.informacion = informacion
         self.shape = shape
@@ -36,4 +37,7 @@ class Node:
         return self.tipo
 
     def return_info(self):
-        return str(self.informacion)
+        return str(self.id) + " | " + str(self.informacion)
+
+    def return_id(self):
+        return self.id

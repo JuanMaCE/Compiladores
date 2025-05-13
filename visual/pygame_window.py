@@ -30,7 +30,7 @@ shape_types = list(colors.keys())
 
 
 class Shape:
-    def __init__(self, tipo, x, y, texto=""):
+    def __init__(self, id: int, tipo, x, y, texto=""):
         self.tipo = tipo
         self.x = x
         self.y = y
@@ -38,12 +38,17 @@ class Shape:
         self.width = 140
         self.height = 60
         self.selected = False
+        self.id = id
+
 
     def rect(self):
         return pygame.Rect(self.x, self.y, self.width, self.height)
 
     def center(self):
         return self.x + self.width // 2, self.y + self.height // 2
+
+    def return_texto(self):
+        return  self.texto
 
     def draw(self, surface):
         color = colors[self.tipo]
@@ -76,7 +81,7 @@ class Shape:
 
 
 class Connection:
-    def __init__(self, a, b):
+    def __init__(self, a: Shape, b: Shape):
         self.a = a
         self.b = b
 
@@ -115,11 +120,12 @@ def edit_text(shape):
     if new_text:
         shape.texto = new_text
 
+id = 0
 shape_beggin = shape_types[0]
-create_shape_beggin = Shape(shape_beggin, 50, 50)
+create_shape_beggin = Shape(0, shape_beggin, 50, 50)
 shapes.append(create_shape_beggin)
-node_inicio = Node(0, "INICIO", create_shape_beggin)
-grafo =  Grafodirigido(node_inicio)
+node_inicio = Node(id, 0, "INICIO", create_shape_beggin)
+grafo =  Grafodirigido(node_inicio) # -> aqui se crea el grafo
 
 running = True
 while running:
@@ -132,24 +138,25 @@ while running:
         elif event.type == pygame.KEYDOWN:
             # generacion de figuras
             if pygame.K_1 <= event.key <= pygame.K_7:
+                id += 1
                 shape_beggin = shape_types[event.key - pygame.K_1]
-                create_shape_beggin = Shape(shape_beggin, 50, 50)
+                create_shape_beggin = Shape(id, shape_beggin, 50, 50)
                 shapes.append(create_shape_beggin)
                 indice = event.key - pygame.K_1
                 if indice == 0:
-                    grafo.agregar_vertice(indice, "INICIO", create_shape_beggin)
+                    grafo.agregar_vertice(id, indice, "INICIO", create_shape_beggin)
                 elif indice == 1:
-                    grafo.agregar_vertice(indice, "Entrada", create_shape_beggin)
+                    grafo.agregar_vertice(id, indice, "Entrada", create_shape_beggin)
                 elif indice == 2:
-                    grafo.agregar_vertice(indice, "Salida", create_shape_beggin)
+                    grafo.agregar_vertice(id, indice, "Salida", create_shape_beggin)
                 elif indice == 3:
-                    grafo.agregar_vertice(indice, "proceso", create_shape_beggin)
+                    grafo.agregar_vertice(id, indice, "proceso", create_shape_beggin)
                 elif indice == 4:
-                    grafo.agregar_vertice(indice, "condicion", create_shape_beggin)
+                    grafo.agregar_vertice(id, indice, "condicion", create_shape_beggin)
                 elif indice == 5:
-                    grafo.agregar_vertice(indice, "final", create_shape_beggin)
+                    grafo.agregar_vertice(id, indice, "final", create_shape_beggin)
                 elif indice == 6:
-                    grafo.agregar_vertice(indice, "funcion", create_shape_beggin)
+                    grafo.agregar_vertice(id, indice, "funcion", create_shape_beggin)
 
             elif event.key == pygame.K_SPACE:
                 print("Secuencia:")
@@ -172,9 +179,14 @@ while running:
                         s.selected = True
                         drag_offset = (s.x - event.pos[0], s.y - event.pos[1])
                         if pygame.key.get_mods() & pygame.KMOD_CTRL:
+                            print(grafo.mostrar())
                             if connecting_from and connecting_from != s:
-                                connections.append(Connection(connecting_from, s))
+                                arista = Connection(connecting_from, s)
+                                connections.append(arista)
                                 connecting_from = None
+                                grafo.agregar_arista(arista.a.id, arista.b.id)
+                                print(arista.a.id)
+                                print(grafo.obtener_nodo_por_id(arista.a.id))
                             else:
                                 connecting_from = s
                         break
@@ -201,6 +213,7 @@ while running:
 
     for c in connections:
         c.draw(screen)
+
     for s in shapes:
         s.draw(screen)
 
