@@ -220,6 +220,6 @@ while running:
     pygame.display.flip()
     clock.tick(60)
 
-print(grafo.mostrar())
+print(grafo.caminos_grafo())
 pygame.quit()
 sys.exit()

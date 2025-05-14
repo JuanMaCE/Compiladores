@@ -26,24 +26,34 @@ class Grafodirigido():
 
 
 
-    def _caminos_grafo(self):
+    def caminos_grafo(self):
         txt = self.head.return_info()
         inicio = self.head
         next = self.adyacencia[inicio][0]
-        return self.caminos_grafo(next, txt)
+        return self._caminos_grafo(next, txt)
 
-    def caminos_grafo(self, node: Node, text: str):
+    def _caminos_grafo(self, node: Node, text: str = "") -> list[str]:
         text += " -> " + node.return_info()
+
+        # Caso con dos caminos
         if len(self.adyacencia[node]) == 2:
             izquierda = self.adyacencia[node][0]
             derecha = self.adyacencia[node][1]
-            self.caminos_grafo(izquierda, text)
-            self.caminos_grafo(derecha, text)
+            caminos_izquierda = self._caminos_grafo(izquierda, text)
+            caminos_derecha = self._caminos_grafo(derecha, text)
+            return caminos_izquierda + caminos_derecha
 
+        # Caso con un solo camino
         elif len(self.adyacencia[node]) == 1:
-            next = self.adyacencia[node][0]
-            text += " -> " + next.return_info()
-            return  self.caminos_grafo(next, text)
+            siguiente = self.adyacencia[node][0]
+            return self._caminos_grafo(siguiente, text)
+
+        # Caso sin caminos (nodo hoja)
+        elif len(self.adyacencia[node]) == 0:
+            return [text]
+
+        return []
+
 
     def mostrar(self):
         txt = ""
