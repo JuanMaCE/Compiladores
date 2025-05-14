@@ -60,7 +60,7 @@ class Shape:
             points = [(cx, r.top), (r.right, cy), (cx, r.bottom), (r.left, cy)]
             pygame.draw.polygon(surface, color, points)
             pygame.draw.polygon(surface, (0, 0, 0), points, 2)
-        elif self.tipo == "PROCESO":
+        elif self.tipo == "ENTRADA":
             points = [(r.left + 30, r.top), (r.right, r.top), (r.right - 30, r.bottom), (r.left, r.bottom)]
             pygame.draw.polygon(surface, color, points)
             pygame.draw.polygon(surface, (0, 0, 0), points, 2)
@@ -152,11 +152,11 @@ while running:
                 if indice == 0:
                     grafo.agregar_vertice(id, indice, "INICIO", create_shape_beggin)
                 elif indice == 1:
-                    grafo.agregar_vertice(id, indice, "Proceso", create_shape_beggin)
+                    grafo.agregar_vertice(id, indice, "ENTRADA", create_shape_beggin)
                 elif indice == 2:
                     grafo.agregar_vertice(id, indice, "Salida", create_shape_beggin)
                 elif indice == 3:
-                    grafo.agregar_vertice(id, indice, "Entrada", create_shape_beggin)
+                    grafo.agregar_vertice(id, indice, "PROCESO", create_shape_beggin)
                 elif indice == 4:
                     grafo.agregar_vertice(id, indice, "condicion", create_shape_beggin)
                 elif indice == 5:
