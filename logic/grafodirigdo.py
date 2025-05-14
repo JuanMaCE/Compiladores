@@ -30,58 +30,82 @@ class Grafodirigido():
 
     def caminos_grafo(self):
         inicio = self.head
-        return self._caminos_grafo(inicio)
+        nodos_visitados = []
+        return self._caminos_grafo(inicio, nodos_visitados)
 
-    def _caminos_grafo(self, node: Node) -> str:
+    def _caminos_grafo(self, node: Node, nodos_visitados) -> str:
+        if node in nodos_visitados:
+            print(node)
+            return "CICLO"  # Para evitar ciclos
+        nodos_visitados.append(node)
         current = node.return_info()
+        hijos = self.adyacencia.get(node, [])
 
-        if len(self.adyacencia[node]) == 0:
+        if len(hijos) == 0:
             return current
-
-        if len(self.adyacencia[node]) == 1:
-            siguiente = self.adyacencia[node][0]
-            return f"{current}({self._caminos_grafo(siguiente)})"
-
-        if len(self.adyacencia[node]) == 2:
-            izquierda = self.adyacencia[node][0]
-            derecha = self.adyacencia[node][1]
-            return f"{current}({self._caminos_grafo(izquierda)},{self._caminos_grafo(derecha)})"
-
-        return current
+        elif len(hijos) == 1:
+            return f"{current}({self._caminos_grafo(hijos[0], nodos_visitados)})"
+        elif len(hijos) == 2:
+            izquierda = self._caminos_grafo(hijos[0], nodos_visitados)
+            derecha = self._caminos_grafo(hijos[1], nodos_visitados)
+            return f"{current}({izquierda},{derecha})"
 
     def generate_code_C(self):
         inicio = self.head
-        return self._generate_code_C(inicio)
+        nodos_visitados = []
+        return self._generate_code_C(inicio, nodos_visitados, False)
 
-    def _generate_code_C(self, node: Node) -> str:
+    def _generate_code_C(self, node: Node, nodos_visitados, flag) -> str:
         current = node.return_info()
 
-        if node.return_tipo() == 3:
-            txt = node.informacion
-            self.code_c += self.generate_entrada(txt) +"\n"
-            self.variables[txt.split()[1]] = txt.split()[0]
+        if node in nodos_visitados:
+            return "CICLO"
 
-        if node.return_tipo() == 2:
-            new_text = self.generate_imprimir(node.informacion)
-            self.code_c += new_text + "\n"
-        elif node.return_tipo()  == 1:
+        if node.return_tipo()  == 1:
             self.generate_lectura(node.informacion)
 
+        elif node.return_tipo() == 2:
+            new_text = self.generate_imprimir(node.informacion)
+            self.code_c += new_text + "\n"
+
+        elif node.return_tipo() == 3:
+            txt = node.informacion
+            self.code_c += self.generate_entrada(txt) + "\n"
+            self.variables[txt.split()[1]] = txt.split()[0]
+
+        elif node.return_tipo() == 4:
+            txt = self.generate_if(node.informacion)
+            self.code_c += txt
+            flag = True
+
+
         elif node.return_tipo() == 5:
-            self.code_c += "}"
+                self.code_c += "}"
 
         if len(self.adyacencia[node]) == 0:
             return current
 
-        if len(self.adyacencia[node]) == 1:
-            siguiente = self.adyacencia[node][0]
 
-            return f"{current}({self._generate_code_C(siguiente)})"
+        nodos_visitados.append(node)
+        current = node.return_info()
+        hijos = self.adyacencia.get(node, [])
 
-        if len(self.adyacencia[node]) == 2:
-            izquierda = self.adyacencia[node][0]
-            derecha = self.adyacencia[node][1]
-            return f"{current}({self._generate_code_C(izquierda)},{self._generate_code_C(derecha)})"
+        if len(hijos) == 0:
+            return current
+        elif len(hijos) == 1:
+            return f"{current}({self._generate_code_C(hijos[0], nodos_visitados, flag)})"
+        elif len(hijos) == 2:
+            if flag == False:
+                izquierda = self._generate_code_C(hijos[0], nodos_visitados, flag)
+                derecha = self._generate_code_C(hijos[1], nodos_visitados, flag)
+                return f"{current}({izquierda},{derecha})"
+            else:
+                izquierda = self._generate_code_C(hijos[0], nodos_visitados, flag)
+                self.code_c += "else {"
+                derecha = self._generate_code_C(hijos[1], nodos_visitados, flag)
+                self.code_c += "}"
+
+                return f"{current}({izquierda}, {derecha})"
 
         return current
 
@@ -108,6 +132,11 @@ class Grafodirigido():
             new_txt = f'printf("%c\\n", {var});\n'
         else:
             new_txt = f'printf("%s\\n", {var});\n'
+        return new_txt
+
+
+    def generate_if(self, condicion: str):
+        new_txt = f"if ({condicion}) ""{" + "\n"
         return new_txt
 
     def generate_lectura(self, texto):

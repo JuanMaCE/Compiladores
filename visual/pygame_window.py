@@ -164,10 +164,7 @@ while running:
                 elif indice == 6:
                     grafo.agregar_vertice(id, indice, "funcion", create_shape_beggin)
 
-            elif event.key == pygame.K_SPACE:
-                print("Secuencia:")
-                for i, s in enumerate(shapes):
-                    print(f"{i + 1}. {s.tipo}: {s.texto}")
+
             elif event.key == pygame.K_DELETE:
                 for s in shapes:
                     if s.selected:
