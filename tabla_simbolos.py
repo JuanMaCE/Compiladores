@@ -10,7 +10,7 @@ class TablaSimbolos:
 
     def obtener_tipo_variable(self, nombre):
         if nombre not in self.variables:
-            raise Exception(f"Error: variable {nombre} ya declarada")
+            raise Exception(f"Error: variable {nombre} no declarada")
         return self.variables(nombre)
     
     def declarar_funcion(self, nombre, tipo_retorno, parametros):
@@ -20,5 +20,5 @@ class TablaSimbolos:
 
     def obtener_info_funcion(self, nombre):
         if nombre not in self.funciones:
-            raise Exception(f"Error: Funcion {nombre} ya declarada")
+            raise Exception(f"Error: Funcion {nombre} no declarada")
         return self.funciones(nombre)

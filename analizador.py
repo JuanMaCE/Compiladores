@@ -9,11 +9,24 @@ int sumar(int a, int b) {
 }
 
 int main() {
-    int x = 5;
-    int y = 7;
+    int x;
+    int y;
+    printf("Ingrese Primer Numero: ")
+    scanf("%d", &x);
+    printf("Ingrese Segundo Numero: ")
+    scanf("%d", &y);
     int resultado = sumar(x, y);
 
-    printf("La suma es: ", x, y, resultado);
+    if (resultado <= 0){
+        printf("La suma es: ", x, y, resultado);
+    }
+
+    while (resultado <= 5) {
+        printf(resultado);
+    }
+    for (int i = 1; i <= 5; i++) {
+        printf(i);
+    }
 
     return 0;
 }
@@ -36,10 +49,19 @@ def main():
     try:
         parser = Parser(tokens)
         arbol_ast = parser.parsear()
-        print('Arbol')
-        codigo_asm = arbol_ast.generar_codigo() 
+        codigo_py = arbol_ast.traducir()
+        print("------------------------------")
+        print("Codigo Python")
+        codigo_py = [linea.replace('\t', '    ') for linea in codigo_py]
+        codigo_completo = "\n".join(codigo_py)
+        print(codigo_completo)
+        print("------------------------------")
+        print('')
+        codigo_asm = arbol_ast.generar_codigo()
+        print("------------------------------")
         print("Código Ensamblador Generado:")
         print(codigo_asm)
+        print("------------------------------")
     except SyntaxError as e:
         print(e)
 

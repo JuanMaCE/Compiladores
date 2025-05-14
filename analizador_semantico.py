@@ -20,12 +20,12 @@ class AnalizadorSemantico:
                 raise Exception(f"Error: Tipo incopatible en la operacion {tipo_izq}{nodo.operador}")
             return tipo_izq #Retora el tipo resultdo
         elif isinstance(nodo, NodoFuncion):
-            self.tabla_simbolos.declarar_funcion(nodo.nombre, nodo.tipo, nodo.parametro)
+            self.tabla_simbolos.declarar_funcion(nodo.nombre, nodo.tipo, nodo.parametros)
             for instruccion in nodo.cuerpo:
                 self.analizar(instruccion)
         elif isinstance(nodo, NodoLlamarFuncion):
-            tipo_retorno, parametros = self.tabla_simbolos.obtner_info_funcion(nodo.nombre)
-            if len(nodo.argumento) != len(parametros):
+            tipo_retorno, parametros = self.tabla_simbolos.obtener_info_funcion(nodo.nombre)
+            if len(nodo.argumentos) != len(parametros):
                 raise Exception(f"Error: la funcion {nodo.nombre} espera {len(parametros)} argumentos")
             return tipo_retorno
         elif isinstance(nodo, NodoPrograma):

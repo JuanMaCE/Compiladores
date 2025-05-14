@@ -25,15 +25,16 @@ class NodoPrograma(NodoAST):
         return codigo
 
 class NodoFuncion(NodoAST):
-    def __init__(self, nombre, parametros, cuerpo):
+    def __init__(self, tipo, nombre, parametros, cuerpo):
+        self.tipo = tipo
         self.nombre = nombre
         self.parametros = parametros
         self.cuerpo = cuerpo
         
     def traducir(self):
         params = ", ".join(p.traducir() for p in self.parametros)
-        cuerpo = "\n    ".join(c.traducir() for c in self.cuerpo)
-        return f"def {self.nombre}({params}):\n    {cuerpo}"
+        cuerpo = "\n\t".join(c.traducir() for c in self.cuerpo)
+        return f"def {self.nombre}({params}):\n\t{cuerpo}\n"
     
     def generar_codigo(self):
         codigo = f"{self.nombre}:\n"
@@ -188,7 +189,7 @@ class NodoBooleano(NodoAST):
         self.valor = valor
 
     def traducir(self):
-        return str(self.valor[1])
+        return str(self.valor[1]).capitalize()
 
 class NodoLlamarFuncion(NodoAST):
     def __init__(self, nombre, argumentos):
@@ -197,7 +198,7 @@ class NodoLlamarFuncion(NodoAST):
         
     def traducir(self):
         params = ", ".join(p.traducir() for p in self.argumentos)
-        return f"{self.nombre}({params})"
+        return f"{self.nombre[1]}({params})"
     
     def generar_codigo(self):
         codigo = []
@@ -241,16 +242,16 @@ class NodoIf(NodoAST):
         
     def traducir(self):
         if_part = f"if {self.condicion.traducir()}:\n"
-        if_part += "\n".join(f"    {inst.traducir()}" for inst in self.cuerpo_if)
+        if_part += "\n".join(f"\t\t{inst.traducir()}" for inst in self.cuerpo_if)
         
         if not self.cuerpo_else:
             return if_part
             
         else_part = "else:\n"
-        else_part += "\n".join(f"    {inst.traducir()}" for inst in self.cuerpo_else)
+        else_part += "\n".join(f"\t\t{inst.traducir()}" for inst in self.cuerpo_else)
         
         return f"{if_part}\n{else_part}"
-    
+
     def generar_codigo(self):
         label_else = f"else_{id(self)}"
         label_end = f"endif_{id(self)}"
@@ -279,8 +280,8 @@ class NodoWhile(NodoAST):
         self.cuerpo = cuerpo
         
     def traducir(self):
-        cuerpo = "\n    ".join(inst.traducir() for inst in self.cuerpo)
-        return f"while {self.condicion.traducir()}:\n    {cuerpo}"
+        cuerpo = "\n\t".join(inst.traducir() for inst in self.cuerpo)
+        return f"while {self.condicion.traducir()}:\n\t\t{cuerpo}"
     
     def generar_codigo(self):
         label_start = f"while_start_{id(self)}"
@@ -314,9 +315,9 @@ class NodoFor(NodoAST):
     def traducir(self):
         init = self.inicializacion.traducir()
         cond = self.condicion.traducir()
-        incr = self.incremento.traducir().rstrip(';')
-        cuerpo = "\n    ".join(inst.traducir() for inst in self.cuerpo)
-        return f"for ({init} {cond}; {incr}):\n    {cuerpo}"
+        incr = self.incremento.rstrip(';')
+        cuerpo = "\n\t".join(inst.traducir() for inst in self.cuerpo)
+        return f"for ({init}; {cond}; {incr}):\n\t\t{cuerpo}"
     
     def generar_codigo(self):
         label_start = f"for_start_{id(self)}"
@@ -411,6 +412,22 @@ class NodoPrint(NodoAST):
             codigo.append("\tint 0x80")
         
         return "\n".join(codigo)
+
+class NodoScan(NodoAST):
+    def __init__(self, argumentos):
+        self.argumentos = argumentos
+        
+    def traducir(self):
+        lineas = []
+
+        for variable, tipo_dato in self.argumentos:
+            if variable[0] == 'IDENTIFIER':
+                if tipo_dato == str:
+                    lineas.append(f"{variable[1]} = input()")
+                else:
+                    lineas.append(f"{variable[1]} = {tipo_dato.__name__}(input())")
+
+        return '\n'.join(lineas)
 
 class NodoDeclaracion(NodoAST):
     def __init__(self, tipo, nombre, expresion=None):
