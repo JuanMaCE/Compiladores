@@ -5,6 +5,7 @@ class Grafodirigido():
         self.head = cabeza
         self.adyacencia = {}
         self.adyacencia[self.head] = []
+        self.code_c = "#include <stdio.h>" + "\n" + "int main() {" +" \n"
 
     def agregar_vertice(self, id: int, tipo: int, informacion: str, shape) -> Node:
         new_node = Node(id, tipo, informacion, shape)
@@ -24,35 +25,55 @@ class Grafodirigido():
         nodo_final = self.obtener_nodo_por_id(destino)
         self.adyacencia[nodo_inicio].append(nodo_final)
 
-
-
     def caminos_grafo(self):
-        txt = self.head.return_info()
         inicio = self.head
-        next = self.adyacencia[inicio][0]
-        return self._caminos_grafo(next, txt)
+        return self._caminos_grafo(inicio)
 
-    def _caminos_grafo(self, node: Node, text: str = "") -> list[str]:
-        text += " -> " + node.return_info()
+    def _caminos_grafo(self, node: Node) -> str:
+        current = node.return_info()
 
-        # Caso con dos caminos
+        if len(self.adyacencia[node]) == 0:
+            return current
+
+        if len(self.adyacencia[node]) == 1:
+            siguiente = self.adyacencia[node][0]
+            return f"{current}({self._caminos_grafo(siguiente)})"
+
         if len(self.adyacencia[node]) == 2:
             izquierda = self.adyacencia[node][0]
             derecha = self.adyacencia[node][1]
-            caminos_izquierda = self._caminos_grafo(izquierda, text)
-            caminos_derecha = self._caminos_grafo(derecha, text)
-            return caminos_izquierda + caminos_derecha
+            return f"{current}({self._caminos_grafo(izquierda)},{self._caminos_grafo(derecha)})"
 
-        # Caso con un solo camino
-        elif len(self.adyacencia[node]) == 1:
+        return current
+
+    def generate_code_C(self):
+        inicio = self.head
+        return self._generate_code_C(inicio)
+
+    def _generate_code_C(self, node: Node) -> str:
+        current = node.return_info()
+        if node.return_id() == 1:
+            self.code_c += self.generate_entrada(node.informacion)
+
+        if len(self.adyacencia[node]) == 0:
+            return current
+
+        if len(self.adyacencia[node]) == 1:
             siguiente = self.adyacencia[node][0]
-            return self._caminos_grafo(siguiente, text)
 
-        # Caso sin caminos (nodo hoja)
-        elif len(self.adyacencia[node]) == 0:
-            return [text]
+            return f"{current}({self._generate_code_C(siguiente)})"
 
-        return []
+        if len(self.adyacencia[node]) == 2:
+            izquierda = self.adyacencia[node][0]
+            derecha = self.adyacencia[node][1]
+            return f"{current}({self._generate_code_C(izquierda)},{self._generate_code_C(derecha)})"
+
+        return current
+
+    def generate_entrada(self, var):
+        txt = str(var)
+        return txt
+
 
 
     def mostrar(self):

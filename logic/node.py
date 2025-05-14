@@ -15,6 +15,8 @@ class Node:
         self.informacion = informacion
         self.shape = shape
 
+
+
     def return_info_str(self):
         type = ""
         if self.tipo == 0:
@@ -41,3 +43,7 @@ class Node:
 
     def return_id(self):
         return self.id
+
+    def node_change_info(self, txt):
+        self.informacion = txt
+

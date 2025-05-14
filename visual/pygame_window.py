@@ -110,22 +110,28 @@ selected_shape = None
 drag_offset = (0, 0)
 connecting_from = None
 
-
-def edit_text(shape):
-    import tkinter as tk
-    from tkinter import simpledialog
-    root = tk.Tk()
-    root.withdraw()
-    new_text = simpledialog.askstring("Editar Texto", "Nuevo contenido:", initialvalue=shape.texto)
-    if new_text:
-        shape.texto = new_text
-
 id = 0
 shape_beggin = shape_types[0]
 create_shape_beggin = Shape(0, shape_beggin, 50, 50)
 shapes.append(create_shape_beggin)
 node_inicio = Node(id, 0, "INICIO", create_shape_beggin)
 grafo =  Grafodirigido(node_inicio) # -> aqui se crea el grafo
+
+
+
+def edit_text(shape: Shape):
+    import tkinter as tk
+    from tkinter import simpledialog
+    root = tk.Tk()
+    root.withdraw()
+    new_text = simpledialog.askstring("Editar Texto", "Nuevo contenido:", initialvalue=shape.texto)
+    nodo = grafo.obtener_nodo_por_id(shape.id)
+    nodo.node_change_info(new_text)
+
+    if new_text:
+        shape.texto = new_text
+    return str(new_text)
+
 
 running = True
 while running:
@@ -185,8 +191,6 @@ while running:
                                 connections.append(arista)
                                 connecting_from = None
                                 grafo.agregar_arista(arista.a.id, arista.b.id)
-                                print(arista.a.id)
-                                print(grafo.obtener_nodo_por_id(arista.a.id))
                             else:
                                 connecting_from = s
                         break
@@ -198,6 +202,7 @@ while running:
                         selected_shape = s
                         s.selected = True
                         edit_text(s)
+
                         break
 
         elif event.type == pygame.MOUSEBUTTONUP:
@@ -221,5 +226,15 @@ while running:
     clock.tick(60)
 
 print(grafo.caminos_grafo())
+print("       ")
+print("       ")
+print("       ")
+
+print(" se genera el codigo C")
+print("       ")
+print("       ")
+print("       ")
+grafo.generate_code_C()
+print(grafo.code_c)
 pygame.quit()
 sys.exit()
