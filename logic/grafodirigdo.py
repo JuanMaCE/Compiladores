@@ -1,3 +1,5 @@
+from os.path import split
+
 from logic.node import Node
 
 class Grafodirigido():
@@ -6,6 +8,7 @@ class Grafodirigido():
         self.adyacencia = {}
         self.adyacencia[self.head] = []
         self.code_c = "#include <stdio.h>" + "\n" + "int main() {" +" \n"
+        self.variables = {}
 
     def agregar_vertice(self, id: int, tipo: int, informacion: str, shape) -> Node:
         new_node = Node(id, tipo, informacion, shape)
@@ -52,8 +55,20 @@ class Grafodirigido():
 
     def _generate_code_C(self, node: Node) -> str:
         current = node.return_info()
-        if node.return_id() == 1:
-            self.code_c += self.generate_entrada(node.informacion)
+
+        if node.return_tipo() == 1:
+            txt = node.informacion
+            self.code_c += self.generate_entrada(txt) +"\n"
+            self.variables[txt.split()[1]] = txt.split()[0]
+
+        if node.return_tipo() == 2:
+            new_text = self.generate_imprimir(node.informacion)
+            self.code_c += new_text + "\n"
+        elif node.return_tipo()  == 3:
+            self.generate_lectura(node.informacion)
+
+        elif node.return_tipo() == 5:
+            self.code_c += "}"
 
         if len(self.adyacencia[node]) == 0:
             return current
@@ -70,8 +85,40 @@ class Grafodirigido():
 
         return current
 
+    def generate_imprimir(self, txt: str) -> str:
+        words = txt.split()  # Dividir el texto en palabras
+        var = words[1]
+
+        if var in self.variables:
+            type_var = self.variables[var]
+
+
+        new_txt = ""
+        if type_var == "int":
+            new_txt = f'printf("%d\\n", {var});\n'
+        elif type_var == "str" or type_var == "char[]":
+            new_txt = f'printf("%s\\n", {var});\n'
+        elif type_var == "bool":
+            new_txt = f'printf("%d\\n", {var});\n'  # or use ?: for true/false text
+        elif type_var == "float":
+            new_txt = f'printf("%.2f\\n", {var});\n'
+        elif type_var == "double":
+            new_txt = f'printf("%.4lf\\n", {var});\n'
+        elif type_var == "char":
+            new_txt = f'printf("%c\\n", {var});\n'
+        else:
+            new_txt = f'printf("%s\\n", {var});\n'
+        return new_txt
+
+    def generate_lectura(self, texto):
+
+        if len(texto.split()) == 2:
+            self.code_c += f'scanf("%d", &{texto.split()[1]});' +"\n"
+        else:
+            self.code_c += texto + "\n"
+
     def generate_entrada(self, var):
-        txt = str(var)
+        txt = str(var) + ";"
         return txt
 
 

@@ -60,7 +60,7 @@ class Shape:
             points = [(cx, r.top), (r.right, cy), (cx, r.bottom), (r.left, cy)]
             pygame.draw.polygon(surface, color, points)
             pygame.draw.polygon(surface, (0, 0, 0), points, 2)
-        elif self.tipo == "ENTRADA":
+        elif self.tipo == "PROCESO":
             points = [(r.left + 30, r.top), (r.right, r.top), (r.right - 30, r.bottom), (r.left, r.bottom)]
             pygame.draw.polygon(surface, color, points)
             pygame.draw.polygon(surface, (0, 0, 0), points, 2)
@@ -152,11 +152,11 @@ while running:
                 if indice == 0:
                     grafo.agregar_vertice(id, indice, "INICIO", create_shape_beggin)
                 elif indice == 1:
-                    grafo.agregar_vertice(id, indice, "Entrada", create_shape_beggin)
+                    grafo.agregar_vertice(id, indice, "Proceso", create_shape_beggin)
                 elif indice == 2:
                     grafo.agregar_vertice(id, indice, "Salida", create_shape_beggin)
                 elif indice == 3:
-                    grafo.agregar_vertice(id, indice, "proceso", create_shape_beggin)
+                    grafo.agregar_vertice(id, indice, "Entrada", create_shape_beggin)
                 elif indice == 4:
                     grafo.agregar_vertice(id, indice, "condicion", create_shape_beggin)
                 elif indice == 5:
@@ -185,7 +185,6 @@ while running:
                         s.selected = True
                         drag_offset = (s.x - event.pos[0], s.y - event.pos[1])
                         if pygame.key.get_mods() & pygame.KMOD_CTRL:
-                            print(grafo.mostrar())
                             if connecting_from and connecting_from != s:
                                 arista = Connection(connecting_from, s)
                                 connections.append(arista)
