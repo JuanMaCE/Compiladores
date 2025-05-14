@@ -18,14 +18,14 @@ int main() {
     int resultado = sumar(x, y);
 
     if (resultado <= 0){
-        printf("La suma es: ", x, y, resultado);
+        printf("La suma %d + %d es: %d", &x, &y, &resultado);
     }
 
     while (resultado <= 5) {
-        printf(resultado);
+        printf("%d", &resultado);
     }
     for (int i = 1; i <= 5; i++) {
-        printf(i);
+        printf("%d", &i);
     }
 
     return 0;

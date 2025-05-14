@@ -264,6 +264,13 @@ class Parser:
         return izquierda
 
     def printf_llamada(self):
+        formato_a_tipo_python = {
+            '%d': int,
+            '%f': float,
+            '%lf': float,
+            '%c': str,
+            '%s': str
+        }
         self.coincidir('KEYWORD')
         self.coincidir('DELIMITER')
 
@@ -273,8 +280,23 @@ class Parser:
             if self.obtener_token_actual() and self.obtener_token_actual()[1] == ',':
                 self.coincidir('DELIMITER')
 
+        formato_str = None
+        for argumento in argumentos:
+            if isinstance(argumento, NodoString):
+                formato_str = argumento.valor[1]
+                break
+
+        if not formato_str:
+            raise Exception("No se encontró cadena de formato en printf.")
+
+        formatos = formato_str.strip('"').split()
+
+        variables = [valor.nombre for valor in argumentos if isinstance(valor, NodoIdentificador)]
+
+        resultado = [(('IDENTIFIER', var), formato_a_tipo_python.get(fmt, None)) for fmt, var in zip(formatos, variables)]
+
         self.coincidir('DELIMITER')
-        return NodoPrint(argumentos)
+        return NodoPrintf(resultado, formato_str)
 
     def scanf_llamada(self):
         formato_a_tipo_python = {

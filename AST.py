@@ -229,7 +229,7 @@ class NodoDeclaracion(NodoAST):
         self.nombre = nombre
         
     def traducir(self):
-        return f"{self.tipo} {self.nombre};"
+        return f"{self.nombre}: {self.tipo} = 0" if self.tipo == 'int' else f"{self.nombre}: {self.tipo} = ''"
         
     def generar_codigo(self):
         return f"; Declaración de variable: {self.tipo} {self.nombre}"
@@ -349,13 +349,31 @@ class NodoFor(NodoAST):
         
         return "\n".join(codigo)
 
-class NodoPrint(NodoAST):
-    def __init__(self, argumentos):
+class NodoPrintf(NodoAST):
+    def __init__(self, argumentos, formato_str):
         self.argumentos = argumentos
+        self.cadenaFormato = formato_str
         
     def traducir(self):
-        args = ", ".join(arg.traducir() for arg in self.argumentos)
-        return f"print({args})"
+        import re
+
+        variables = [nombre[1] for ((_, nombre), _) in self.argumentos]
+        partes = re.split(r'(%[dfscl])', self.cadenaFormato.strip('"'))
+
+        resultado = []
+        var_index = 0
+        for parte in partes:
+            if re.fullmatch(r'%[dfscl]', parte):
+                if var_index < len(variables):
+                    resultado.append(f"{{{variables[var_index]}}}")
+                    var_index += 1
+                else:
+                    resultado.append(parte)
+            else:
+                resultado.append(parte)
+
+        cuerpo = ''.join(resultado)
+        return f'print(f"{cuerpo}")'
     
     def generar_codigo(self):
         codigo = []
@@ -437,8 +455,8 @@ class NodoDeclaracion(NodoAST):
         
     def traducir(self):
         if self.expresion:
-            return f"{self.tipo} {self.nombre} = {self.expresion.traducir()};"
-        return f"{self.tipo} {self.nombre};"
+            return f"{self.nombre}: {self.tipo} = {self.expresion.traducir()};"
+        return f"{self.nombre}: {self.tipo} = 0" if self.tipo == 'int' else f"{self.nombre}: {self.tipo} = ''"
         
     def generar_codigo(self):
         codigo = f"; Declaración de {self.tipo} {self.nombre}"
