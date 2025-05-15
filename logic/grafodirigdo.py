@@ -75,7 +75,6 @@ class Grafodirigido():
 
             self.code_c += self.generate_entrada(txt) + "\n"
             if len(txt.split()) > 1:
-
                 self.variables[txt.split()[1]] = txt.split()[0]
 
 
@@ -107,7 +106,6 @@ class Grafodirigido():
                 derecha = self._generate_code_C(hijos[1], nodos_visitados, flag, line)
             elif flag == True:
                 izquierda = self._generate_code_C(hijos[0], nodos_visitados, flag, line)
-                print(izquierda, "ESTE ES IZQUIERDA")
                 if izquierda == "CICLO":
                     derecha = self._generate_code_C(hijos[1], nodos_visitados, flag, line)
                 else:
@@ -125,15 +123,12 @@ class Grafodirigido():
         lines_of_code = self.code_c.splitlines()
         characters = self.code_c.split()
         txt_with_while = ""
-        print(self.code_c)
-        print(" ---------------- ")
         for i in range(len(lines_of_code)):
             if lines_of_code[i].strip() == search_txt.strip():
                 lines_of_code[i] = f"while ({node.informacion}) ""{"
             txt_with_while += lines_of_code[i] + "\n"
         txt_with_while += "}" + "\n"
         self.code_c = txt_with_while
-        print(self.code_c)
 
 
     def generate_imprimir(self, txt: str) -> str:
