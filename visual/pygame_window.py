@@ -221,10 +221,6 @@ while running:
     pygame.display.flip()
     clock.tick(60)
 
-print(grafo.caminos_grafo())
-print("       ")
-print("       ")
-print("       ")
 
 print(" se genera el codigo C")
 print("       ")

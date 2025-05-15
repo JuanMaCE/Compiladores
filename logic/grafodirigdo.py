@@ -18,7 +18,6 @@ class Grafodirigido():
 
     def obtener_nodo_por_id(self, id: int) -> Node:
         for nodo in self.adyacencia:
-            print(nodo.return_id(), id)
             if nodo.return_id() == id:
                 return nodo
         return None  # Si no existe
@@ -53,13 +52,14 @@ class Grafodirigido():
     def generate_code_C(self):
         inicio = self.head
         nodos_visitados = []
-        return self._generate_code_C(inicio, nodos_visitados, False)
+        line = 1
+        return self._generate_code_C(inicio, nodos_visitados, False, line)
 
-    def _generate_code_C(self, node: Node, nodos_visitados, flag) -> str:
+    def _generate_code_C(self, node: Node, nodos_visitados, flag, line) -> str:
         current = node.return_info()
-
         if node in nodos_visitados:
-            print(node.return_info())
+            self.generate_while(node)
+            self.flag2 = True
             return "CICLO"
 
         if node.return_tipo()  == 1:
@@ -97,21 +97,42 @@ class Grafodirigido():
         if len(hijos) == 0:
             return current
         elif len(hijos) == 1:
-            return f"{current}({self._generate_code_C(hijos[0], nodos_visitados, flag)})"
+            return self._generate_code_C(hijos[0], nodos_visitados, flag, line)
         elif len(hijos) == 2:
+
             if flag == False:
-                izquierda = self._generate_code_C(hijos[0], nodos_visitados, flag)
-                derecha = self._generate_code_C(hijos[1], nodos_visitados, flag)
-                return f"{current}({izquierda},{derecha})"
-            else:
-                izquierda = self._generate_code_C(hijos[0], nodos_visitados, flag)
-                self.code_c += "else{"
-                derecha = self._generate_code_C(hijos[1], nodos_visitados, flag)
-                self.code_c += "}"
+                izquierda = self._generate_code_C(hijos[0], nodos_visitados, flag, line)
+                derecha = self._generate_code_C(hijos[1], nodos_visitados, flag, line)
+            elif flag == True:
+                izquierda = self._generate_code_C(hijos[0], nodos_visitados, flag, line)
+                print(izquierda, "ESTE ES IZQUIERDA")
+                if izquierda == "CICLO":
+                    derecha = self._generate_code_C(hijos[1], nodos_visitados, flag, line)
+                else:
+                    self.code_c += "\n" + "else{" + "\n"
+                    derecha = self._generate_code_C(hijos[1], nodos_visitados, flag, line)
+                    self.code_c += "}"
                 flag = False
-                return f"{current}({izquierda}, {derecha})"
+
+
 
         return current
+
+    def generate_while(self, node):
+        search_txt = self.generate_if(node.informacion) + "\n"
+        lines_of_code = self.code_c.splitlines()
+        characters = self.code_c.split()
+        txt_with_while = ""
+        print(self.code_c)
+        print(" ---------------- ")
+        for i in range(len(lines_of_code)):
+            if lines_of_code[i].strip() == search_txt.strip():
+                lines_of_code[i] = f"while ({node.informacion}) ""{"
+            txt_with_while += lines_of_code[i] + "\n"
+        txt_with_while += "}" + "\n"
+        self.code_c = txt_with_while
+        print(self.code_c)
+
 
     def generate_imprimir(self, txt: str) -> str:
         words = txt.split()
