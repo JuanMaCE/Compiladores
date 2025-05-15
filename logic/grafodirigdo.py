@@ -71,9 +71,11 @@ class Grafodirigido():
 
         elif node.return_tipo() == 3:
             txt = node.informacion
+            print(txt)
 
             self.code_c += self.generate_entrada(txt) + "\n"
-            if len(txt.split()) > 2:
+            if len(txt.split()) > 1:
+
                 self.variables[txt.split()[1]] = txt.split()[0]
 
 
@@ -138,27 +140,27 @@ class Grafodirigido():
         words = txt.split()
         if len(words) == 2:# Dividir el texto en palabras
             var = words[1]
+            new_txt = ""
+            print(self.variables)
 
             if var in self.variables:
                 type_var = self.variables[var]
 
-
-            new_txt = ""
-            if type_var == "int":
-                new_txt = f'printf("%d\\n", {var});\n'
-            elif type_var == "str" or type_var == "char[]":
-                new_txt = f'printf("%s\\n", {var});\n'
-            elif type_var == "bool":
-                new_txt = f'printf("%d\\n", {var});\n'  # or use ?: for true/false text
-            elif type_var == "float":
-                new_txt = f'printf("%.2f\\n", {var});\n'
-            elif type_var == "double":
-                new_txt = f'printf("%.4lf\\n", {var});\n'
-            elif type_var == "char":
-                new_txt = f'printf("%c\\n", {var});\n'
-            else:
-                new_txt = f'printf("%s\\n", {var});\n'
-            return new_txt
+                if type_var == "int":
+                    new_txt = f'printf("%d\\n", {var});\n'
+                elif type_var == "str" or type_var == "char[]":
+                    new_txt = f'printf("%s\\n", {var});\n'
+                elif type_var == "bool":
+                    new_txt = f'printf("%d\\n", {var});\n'  # or use ?: for true/false text
+                elif type_var == "float":
+                    new_txt = f'printf("%.2f\\n", {var});\n'
+                elif type_var == "double":
+                    new_txt = f'printf("%.4lf\\n", {var});\n'
+                elif type_var == "char":
+                    new_txt = f'printf("%c\\n", {var});\n'
+                else:
+                    new_txt = f'printf("%s\\n", {var});\n'
+                return new_txt
         else:
             return txt
 
