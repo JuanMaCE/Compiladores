@@ -59,6 +59,7 @@ class Grafodirigido():
         current = node.return_info()
 
         if node in nodos_visitados:
+            print(node.return_info())
             return "CICLO"
 
         if node.return_tipo()  == 1:
@@ -66,12 +67,15 @@ class Grafodirigido():
 
         elif node.return_tipo() == 2:
             new_text = self.generate_imprimir(node.informacion)
-            self.code_c += new_text + "\n"
+            self.code_c += new_text
 
         elif node.return_tipo() == 3:
             txt = node.informacion
+
             self.code_c += self.generate_entrada(txt) + "\n"
-            self.variables[txt.split()[1]] = txt.split()[0]
+            if len(txt.split()) > 2:
+                self.variables[txt.split()[1]] = txt.split()[0]
+
 
         elif node.return_tipo() == 4:
             txt = self.generate_if(node.informacion)
@@ -101,39 +105,41 @@ class Grafodirigido():
                 return f"{current}({izquierda},{derecha})"
             else:
                 izquierda = self._generate_code_C(hijos[0], nodos_visitados, flag)
-                self.code_c += "else {"
+                self.code_c += "else{"
                 derecha = self._generate_code_C(hijos[1], nodos_visitados, flag)
                 self.code_c += "}"
-
+                flag = False
                 return f"{current}({izquierda}, {derecha})"
 
         return current
 
     def generate_imprimir(self, txt: str) -> str:
-        words = txt.split()  # Dividir el texto en palabras
-        var = words[1]
+        words = txt.split()
+        if len(words) == 2:# Dividir el texto en palabras
+            var = words[1]
 
-        if var in self.variables:
-            type_var = self.variables[var]
+            if var in self.variables:
+                type_var = self.variables[var]
 
 
-        new_txt = ""
-        if type_var == "int":
-            new_txt = f'printf("%d\\n", {var});\n'
-        elif type_var == "str" or type_var == "char[]":
-            new_txt = f'printf("%s\\n", {var});\n'
-        elif type_var == "bool":
-            new_txt = f'printf("%d\\n", {var});\n'  # or use ?: for true/false text
-        elif type_var == "float":
-            new_txt = f'printf("%.2f\\n", {var});\n'
-        elif type_var == "double":
-            new_txt = f'printf("%.4lf\\n", {var});\n'
-        elif type_var == "char":
-            new_txt = f'printf("%c\\n", {var});\n'
+            new_txt = ""
+            if type_var == "int":
+                new_txt = f'printf("%d\\n", {var});\n'
+            elif type_var == "str" or type_var == "char[]":
+                new_txt = f'printf("%s\\n", {var});\n'
+            elif type_var == "bool":
+                new_txt = f'printf("%d\\n", {var});\n'  # or use ?: for true/false text
+            elif type_var == "float":
+                new_txt = f'printf("%.2f\\n", {var});\n'
+            elif type_var == "double":
+                new_txt = f'printf("%.4lf\\n", {var});\n'
+            elif type_var == "char":
+                new_txt = f'printf("%c\\n", {var});\n'
+            else:
+                new_txt = f'printf("%s\\n", {var});\n'
+            return new_txt
         else:
-            new_txt = f'printf("%s\\n", {var});\n'
-        return new_txt
-
+            return txt
 
     def generate_if(self, condicion: str):
         new_txt = f"if ({condicion}) ""{" + "\n"
