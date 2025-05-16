@@ -7,7 +7,7 @@ class Grafodirigido():
         self.head = cabeza
         self.adyacencia = {}
         self.adyacencia[self.head] = []
-        self.code_c = "#include <stdio.h>" + "\n" + "#include <stdbool.h> " "\n" +"int main() {" +" \n"
+        self.code_c = "#include <stdio.h>" + "\n" + "#include <stdbool.h> " "\n"
         self.variables = {}
 
     def agregar_vertice(self, id: int, tipo: int, informacion: str, shape) -> Node:
@@ -51,6 +51,10 @@ class Grafodirigido():
 
     def generate_code_C(self):
         inicio = self.head
+        if self.head.informacion == 'INICIO':
+            self.code_c += 'void main()' + '{' + '\n'
+        else:
+            self.code_c+=self.head.informacion+'{'+'\n'
         nodos_visitados = []
         line = 1
         return self._generate_code_C(inicio, nodos_visitados, False, line)
