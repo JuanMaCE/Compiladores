@@ -5,7 +5,13 @@ from logic.node import Node
 from logic.grafodirigdo import Grafodirigido
 
 pygame.init()
-
+WIDTH2, HEIGHT2 = 400, 300
+FONT = pygame.font.SysFont(None, 24)
+instrucciones_texto = "Presione 1 2 3 4 5 6"
+salida_texto = "Resultado al presionar enter"
+GAP2 = 10
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
 WIDTH, HEIGHT = 1000, 700
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Editor de Diagrama de Flujo")
@@ -26,9 +32,6 @@ colors = {
 shape_types = list(colors.keys())
 
 
-
-
-
 class Shape:
     def __init__(self, id: int, tipo, x, y, texto=""):
         self.tipo = tipo
@@ -40,7 +43,6 @@ class Shape:
         self.selected = False
         self.id = id
 
-
     def rect(self):
         return pygame.Rect(self.x, self.y, self.width, self.height)
 
@@ -48,7 +50,7 @@ class Shape:
         return self.x + self.width // 2, self.y + self.height // 2
 
     def return_texto(self):
-        return  self.texto
+        return self.texto
 
     def draw(self, surface):
         color = colors[self.tipo]
@@ -65,15 +67,12 @@ class Shape:
             pygame.draw.polygon(surface, color, points)
             pygame.draw.polygon(surface, (0, 0, 0), points, 2)
         elif self.tipo == "SALIDA":
-            points = [(r.left, r.top), (r.right - 30, r.top), (r.right, r.bottom), (r.left + 30, r.bottom)]
+            points = [(r.left, r.top + 20), (r.right - 20, r.top), (r.right, r.centery), (r.right - 20, r.bottom),(r.left, r.bottom)]
             pygame.draw.polygon(surface, color, points)
             pygame.draw.polygon(surface, (0, 0, 0), points, 2)
         else:
-            pygame.draw.ellipse(surface, color, r) if self.tipo in ["INICIO", "FIN"] else pygame.draw.rect(surface,
-                                                                                                           color, r,
-                                                                                                           border_radius=10)
-            pygame.draw.ellipse(surface, (0, 0, 0), r, 2) if self.tipo in ["INICIO", "FIN"] else pygame.draw.rect(
-                surface, (0, 0, 0), r, 2, border_radius=10)
+            pygame.draw.rect(surface, color, r, border_radius=10)
+            pygame.draw.rect(surface, (0, 0, 0), r, 2, border_radius=10)
 
         text_surface = font.render(self.texto, True, (0, 0, 0))
         text_rect = text_surface.get_rect(center=r.center)
@@ -115,8 +114,25 @@ shape_beggin = shape_types[0]
 create_shape_beggin = Shape(0, shape_beggin, 50, 50)
 shapes.append(create_shape_beggin)
 node_inicio = Node(id, 0, "INICIO", create_shape_beggin)
-grafo =  Grafodirigido(node_inicio) # -> aqui se crea el grafo
+grafo = Grafodirigido(node_inicio) # -> aqui se crea el grafo
 
+
+def draw_left():
+    pygame.draw.rect(screen, WHITE, (0, 0, WIDTH2, HEIGHT2))
+    text_surface = FONT.render(instrucciones_texto, True, BLACK)
+    screen.blit(text_surface, (20, HEIGHT // 2))
+
+
+# Función 2: Dibujar ventana derecha
+def draw_right(text):
+    pygame.draw.rect(screen, WHITE, (WIDTH + GAP2, 0, WIDTH2, HEIGHT2))
+    text_surface = FONT.render(text, True, BLACK)
+    screen.blit(text_surface, (WIDTH + GAP2 + 20, HEIGHT // 2))
+
+
+def update_text(new_text):
+    global salida_texto
+    salida_texto = new_text
 
 
 def edit_text(shape: Shape):
@@ -135,6 +151,8 @@ def edit_text(shape: Shape):
 
 running = True
 while running:
+    draw_left()
+    draw_right(salida_texto)
     screen.fill((245, 245, 245))
 
     for event in pygame.event.get():
@@ -143,6 +161,16 @@ while running:
 
         elif event.type == pygame.KEYDOWN:
             # generacion de figuras
+            if event.key == pygame.K_RETURN:
+                grafo.generate_code_C()
+                # aqui van las funciones ROGER
+                # code_asm = grafo.generate_code_asm()
+                # code_py = grafo.generate_code_python()
+                # EN CONSOLA AUN
+                print("Código C:\n", grafo.code_c)
+                update_text(grafo.code_c)
+                # print("Código ASM:\n", code_asm)
+                # print("Código Python:\n", code_py)
             if pygame.K_1 <= event.key <= pygame.K_7:
                 id += 1
                 shape_beggin = shape_types[event.key - pygame.K_1]
@@ -221,12 +249,5 @@ while running:
     pygame.display.flip()
     clock.tick(60)
 
-
-print(" se genera el codigo C")
-print("       ")
-print("       ")
-print("       ")
-grafo.generate_code_C()
-print(grafo.code_c)
 pygame.quit()
 sys.exit()
