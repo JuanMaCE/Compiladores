@@ -39,7 +39,20 @@ class Shape:
         self.height = 60
         self.selected = False
         self.id = id
-
+        self.graph = 0
+        self.shape_tipo = 0
+        if self.tipo == "ENTRADA":
+            self.shape_tipo = 1
+        elif self.tipo == "SALIDA":
+            self.shape_tipo = 2
+        elif self.tipo == "PROCESO":
+            self.shape_tipo = 3
+        elif self.tipo == "DECISIÓN":
+            self.shape_tipo = 4
+        elif self.tipo == "FIN":
+            self.shape_tipo = 5
+        elif self.tipo == "CallMeBaby":
+            self.shape_tipo = 6
 
     def rect(self):
         return pygame.Rect(self.x, self.y, self.width, self.height)
@@ -79,11 +92,26 @@ class Shape:
         text_rect = text_surface.get_rect(center=r.center)
         surface.blit(text_surface, text_rect)
 
+    def set_graph(self, valor:int):
+        self.graph = valor
+
+
 
 class Connection:
-    def __init__(self, a: Shape, b: Shape):
-        self.a = a
-        self.b = b
+    def __init__(self, inicio: Shape, fin: Shape):
+        self.a = inicio
+        self.b = fin
+        indice = self.b.tipo
+        indice = self.b.tipo
+
+        if inicio.graph != 0:
+            functions[0].eliminar_por_id(self.b.id)
+            print(self.b.id, "|" , self.b.shape_tipo, "|" , self.b.return_texto() , "|", self.b, "|", " eso almacena mi nodo")
+            functions[inicio.graph].agregar_vertice(self.b.id, self.b.shape_tipo, self.b.return_texto(), self.b)
+            functions[inicio.graph].agregar_arista(inicio.id, fin.id)
+        else:
+            functions[inicio.graph].agregar_arista(inicio.id, fin.id)
+
 
     def draw(self, surface):
         ax, ay = self.a.center()
@@ -109,13 +137,16 @@ connections = []
 selected_shape = None
 drag_offset = (0, 0)
 connecting_from = None
-
+functions = []
 id = 0
+id_graph = 0
 shape_beggin = shape_types[0]
 create_shape_beggin = Shape(0, shape_beggin, 50, 50)
 shapes.append(create_shape_beggin)
 node_inicio = Node(id, 0, "INICIO", create_shape_beggin)
-grafo =  Grafodirigido(node_inicio) # -> aqui se crea el grafo
+def_main =  Grafodirigido(node_inicio, id_graph) # -> aqui se crea el grafo
+functions.append(def_main)
+create_shape_beggin.set_graph(def_main.id)
 
 
 
@@ -125,8 +156,21 @@ def edit_text(shape: Shape):
     root = tk.Tk()
     root.withdraw()
     new_text = simpledialog.askstring("Editar Texto", "Nuevo contenido:", initialvalue=shape.texto)
-    nodo = grafo.obtener_nodo_por_id(shape.id)
-    nodo.node_change_info(new_text)
+
+    try:
+        id_of_function = 0
+        for function in functions:
+            lista = function.devolver_list_of_vertices()
+            for nodo in lista:
+                if shape.id == nodo.return_id():
+                    id_of_function = function.id
+                    break
+
+        nodo = functions[id_of_function].obtener_nodo_por_id(shape.id)
+        if nodo is not None:
+            nodo.node_change_info(new_text)
+    except Exception as e:
+        print(f"Error al editar el nodo: {e}")
 
     if new_text:
         shape.texto = new_text
@@ -150,21 +194,24 @@ while running:
                 shapes.append(create_shape_beggin)
                 indice = event.key - pygame.K_1
                 if indice == 0:
-                    grafo.agregar_vertice(id, indice, "INICIO", create_shape_beggin)
-                elif indice == 1:
-                    grafo.agregar_vertice(id, indice, "ENTRADA", create_shape_beggin)
+                    id_graph += 1
+                    node_inicio = Node(id, 0, "INICIO", create_shape_beggin)
+                    new_grafo = Grafodirigido(node_inicio, id_graph)
+                    functions.append(new_grafo)
+                    create_shape_beggin.set_graph(id_graph)
+
+                if indice == 1:
+                    def_main.agregar_vertice(id, indice, "ENTRADA", create_shape_beggin)
                 elif indice == 2:
-                    grafo.agregar_vertice(id, indice, "Salida", create_shape_beggin)
+                    def_main.agregar_vertice(id, indice, "Salida", create_shape_beggin)
                 elif indice == 3:
-                    grafo.agregar_vertice(id, indice, "PROCESO", create_shape_beggin)
+                    def_main.agregar_vertice(id, indice, "PROCESO", create_shape_beggin)
                 elif indice == 4:
-                    grafo.agregar_vertice(id, indice, "condicion", create_shape_beggin)
+                    def_main.agregar_vertice(id, indice, "condicion", create_shape_beggin)
                 elif indice == 5:
-                    grafo.agregar_vertice(id, indice, "final", create_shape_beggin)
+                    def_main.agregar_vertice(id, indice, "final", create_shape_beggin)
                 elif indice == 6:
-                    grafo.agregar_vertice(id, indice, "funcion", create_shape_beggin)
-
-
+                    def_main.agregar_vertice(id, indice, "funcion", create_shape_beggin)
             elif event.key == pygame.K_DELETE:
                 for s in shapes:
                     if s.selected:
@@ -183,10 +230,11 @@ while running:
                         drag_offset = (s.x - event.pos[0], s.y - event.pos[1])
                         if pygame.key.get_mods() & pygame.KMOD_CTRL:
                             if connecting_from and connecting_from != s:
+                                s.set_graph(connecting_from.graph)
                                 arista = Connection(connecting_from, s)
+
                                 connections.append(arista)
                                 connecting_from = None
-                                grafo.agregar_arista(arista.a.id, arista.b.id)
                             else:
                                 connecting_from = s
                         break
@@ -222,11 +270,11 @@ while running:
     clock.tick(60)
 
 
-print(" se genera el codigo C")
-print("       ")
-print("       ")
-print("       ")
-grafo.generate_code_C()
-print(grafo.code_c)
-pygame.quit()
-sys.exit()
+print("Grafos:")
+print("  ")
+print("  ")
+print("  ")
+
+for function in functions:
+    function.generate_code_C()
+    print(function.code_c)
