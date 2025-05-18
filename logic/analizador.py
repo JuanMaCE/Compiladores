@@ -4,19 +4,17 @@ from analizador_semantico import *
 
 # === Ejemplo de Uso ===
 codigo_fuente = """
-int sumar(int a, int b) {
-    return a + b;
-}
-
 int main() {
-    int x = 5;
-    int y = 7;
-    int resultado = sumar(x, y);
-
-    printf("La suma es: ", x, y, resultado);
-
-    return 0;
+int a;
+int b;
+scanf("%d", &a);
+scanf("%d", &b);
+if (a == b) {
+printf("%d\n", a);
 }
+else{
+printf("%d\n", b);
+}}
 """
 
 def main():
