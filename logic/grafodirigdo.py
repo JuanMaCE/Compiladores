@@ -1,5 +1,5 @@
 from os.path import split
-
+import json
 from logic.node import Node
 
 class Grafodirigido():
@@ -235,3 +235,57 @@ class Grafodirigido():
         for nodos in self.adyacencia.keys():
             vertcies.append(nodos)
         return vertcies
+
+    def return_graph(self):
+        return self.adyacencia
+
+    def guardar_en_archivo(self, ruta):
+        data = {
+            "id": self.id,
+            "head": self.head.return_id(),
+            "nodos": [
+                {
+                    "id": nodo.return_id(),
+                    "tipo": nodo.return_tipo(),
+                    "informacion": nodo.return_info(),
+                    "shape": nodo.shape  # asegúrate de que `shape` sea serializable
+                }
+                for nodo in self.adyacencia.keys()
+            ],
+            "adyacencia": {
+                str(nodo.return_id()): [hijo.return_id() for hijo in hijos]
+                for nodo, hijos in self.adyacencia.items()
+            }
+        }
+        with open(ruta, 'w') as f:
+            json.dump(data, f, indent=4)
+
+    @classmethod
+    def cargar_desde_archivo(cls, ruta):
+        from logic.node import Node  # asegúrate de que `Node` tenga los métodos `return_id`, etc.
+
+        with open(ruta, 'r') as f:
+            data = json.load(f)
+
+        nodos_dict = {}
+
+        # Crear nodos
+        for nodo_data in data["nodos"]:
+            nodo = Node(nodo_data["id"], nodo_data["tipo"], nodo_data["informacion"], nodo_data["shape"])
+            nodos_dict[nodo_data["id"]] = nodo
+
+        # Crear grafo
+        grafo = cls(nodos_dict[data["head"]], data["id"])
+
+        # Agregar vértices
+        for nodo in nodos_dict.values():
+            grafo.agregar_vertice_nodo(nodo)
+
+        # Agregar aristas
+        for origen_id, destinos in data["adyacencia"].items():
+            origen = nodos_dict[int(origen_id)]
+            for destino_id in destinos:
+                destino = nodos_dict[int(destino_id)]
+                grafo.adyacencia[origen].append(destino)
+
+        return grafo

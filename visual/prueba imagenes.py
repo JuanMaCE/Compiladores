@@ -2,6 +2,9 @@ import pygame
 import sys
 import os
 import math
+import json
+from tkinter import filedialog
+from tkinter import Tk
 from logic.node import Node
 from logic.grafodirigdo import Grafodirigido
 
@@ -71,7 +74,8 @@ texto_instructivo = [
     "2. Haz clic derecho para editar texto",
     "3. Ctrl + clic para conectar formas(mantener)",
     "4. Botón COMPILAR para generar código",
-    "5. Suprimir: borrar forma seleccionada"
+    "5. Suprimir: borrar forma seleccionada",
+    "6. G: Guardar grafo, C: Cargar grafo"
 ]
 
 
@@ -145,7 +149,6 @@ class WorkShape:
         else:
             # Add to main graph by default
             if functions:
-                print(self.id, self.shape_tipo, self.texto)
                 functions[0].agregar_vertice(self.id, self.shape_tipo, self.texto, self)
 
     def draw(self, surface):
@@ -196,6 +199,25 @@ class WorkShape:
     def return_texto(self):
         return self.texto
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'tipo': self.tipo,
+            'x': self.x,
+            'y': self.y,
+            'texto': self.texto,
+            'graph_id': self.graph_id,
+            'shape_tipo': self.shape_tipo
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        shape = cls(data['tipo'], data['x'], data['y'], data['texto'])
+        shape.id = data['id']
+        shape.graph_id = data['graph_id']
+        shape.shape_tipo = data['shape_tipo']
+        return shape
+
 
 class Connection:
     def __init__(self, start_shape, end_shape):
@@ -221,7 +243,6 @@ class Connection:
                 # Add to new graph
                 for graph in functions:
                     if graph.id == start_shape.graph_id:
-                        print(end_shape.id, end_shape.shape_tipo, end_shape.texto, end_shape)
                         graph.agregar_vertice(end_shape.id, end_shape.shape_tipo, end_shape.texto, end_shape)
                         graph.agregar_arista(start_shape.id, end_shape.id)
                         end_shape.graph_id = start_shape.graph_id
@@ -259,6 +280,185 @@ class Connection:
             label = font.render(self.label, True, (255, 255, 255))
             surface.blit(label, (mid_x - 10, mid_y - 10))
 
+    def to_dict(self):
+        return {
+            'start_id': self.start.id,
+            'end_id': self.end.id,
+            'label': self.label
+        }
+
+
+def save_graph():
+    root = Tk()
+    root.withdraw()
+    file_path = filedialog.asksaveasfilename(
+        defaultextension=".txt",
+        filetypes=[("Text files", "*.txt"), ("All files", "*.*")],
+        initialfile="diagrama_flujo.txt"
+    )
+
+    if not file_path:
+        return False
+
+    try:
+        with open(file_path, 'w') as f:
+            f.write("DIAGRAMA_DE_FLUJO\n")
+            f.write(f"Total_grafos:{len(functions)}\n")
+            f.write(f"Ultimo_ID_grafo:{id_graph}\n")
+            f.write(f"Ultimo_ID_nodo:{id_counter}\n\n")
+
+            for graph in functions:
+                f.write(f"===GRAFO_ID:{graph.id}===\n")
+                f.write(f"Raiz_ID:{graph.head.id}\n")
+
+                # Guardar nodos
+                f.write("NODOS:\n")
+                for nodo in graph.adyacencia:
+                    shape = getattr(nodo, 'shape', None)
+                    tipo_str = shape.tipo if shape else nodo.tipo
+                    texto = shape.texto if shape else nodo.informacion
+                    x = shape.x if shape else 0
+                    y = shape.y if shape else 0
+                    f.write(f"{nodo.id}|{tipo_str}|{texto}|{x}|{y}|{graph.id}\n")
+
+                # Guardar aristas
+                f.write("ARISTAS:\n")
+                for destino in graph.aristas:
+                    for origen in graph.aristas[destino]:
+                        label = getattr(graph, 'etiquetas', {}).get((origen, destino), "")
+                        tipo_origen = graph.get_tipo(origen)
+                        tipo_destino = graph.get_tipo(destino)
+                        f.write(f"{origen}->{destino}|{tipo_origen}|{tipo_destino}|{label}\n")
+
+                # Guardar variables
+                if hasattr(graph, 'variables'):
+                    f.write("VARIABLES:\n")
+                    for name, typ in graph.variables.items():
+                        f.write(f"{typ} {name}\n")
+
+                f.write("\n")
+
+        texto_panel_derecho[0] = f"Diagrama guardado: {os.path.basename(file_path)}"
+        return True
+
+    except Exception as e:
+        texto_panel_derecho[0] = f"Error al guardar: {str(e)}"
+        return False
+
+
+def load_graph():
+    global id_counter, id_graph, functions, work_shapes, connections
+
+    root = Tk()
+    root.withdraw()
+    file_path = filedialog.askopenfilename(
+        filetypes=[("Text files", "*.txt"), ("All files", "*.*")],
+        title="Seleccionar archivo"
+    )
+    if not file_path:
+        return False
+
+    try:
+        # Resetear estructuras
+        functions = []
+        work_shapes = []
+        connections = []
+        shapes_by_id = {}
+        node_by_id = {}
+        temp_shapes = []
+        graph_map = {}
+
+        with open(file_path, 'r') as f:
+            lines = [line.strip() for line in f if line.strip()]
+
+        current_section = None
+        current_graph = None
+        root_id = None
+
+        for line in lines:
+            if line.startswith("DIAGRAMA_DE_FLUJO"):
+                continue
+            elif line.startswith("Total_grafos:"):
+                continue
+            elif line.startswith("Ultimo_ID_grafo:"):
+                id_graph = int(line.split(":")[1]) + 1
+            elif line.startswith("Ultimo_ID_nodo:"):
+                id_counter = int(line.split(":")[1]) + 1
+            elif line.startswith("===GRAFO_ID:"):
+                graph_id = int(line.split(":")[1])
+                current_graph = Grafodirigido(None, graph_id)
+                functions.append(current_graph)
+                graph_map[graph_id] = current_graph
+            elif line.startswith("Raiz_ID:"):
+                root_id = int(line.split(":")[1])
+            elif line == "NODOS:":
+                current_section = "NODOS"
+            elif line == "ARISTAS:":
+                current_section = "ARISTAS"
+            elif line == "VARIABLES:":
+                current_section = "VARIABLES"
+            elif "|" in line and current_section == "NODOS":
+                parts = line.split("|")
+                node_id = int(parts[0])
+                tipo_str = parts[1]
+                texto = parts[2]
+                x = int(parts[3])
+                y = int(parts[4])
+                g_id = int(parts[5])
+
+                tipo = {
+                    "entrada": 1, "salida": 2, "proceso": 3,
+                    "decision": 4, "fin": 5, "llamada": 6
+                }.get(tipo_str, 0)
+
+                shape = WorkShape(tipo_str, x, y, texto)
+                shape.id = node_id
+                shape.graph_id = g_id
+                shape.shape_tipo = tipo
+
+                node = Node(node_id, tipo, texto, shape)
+                shapes_by_id[node_id] = (node, shape)
+                temp_shapes.append(shape)
+
+                graph = graph_map[g_id]
+                graph.agregar_vertice_nodo(node)
+                if node.id == root_id:
+                    graph.head = node
+
+            elif "->" in line and current_section == "ARISTAS":
+                origin_str, rest = line.split("->")
+                origin_id = int(origin_str.strip())
+                dest_id, tipo_o, tipo_d, label = (rest.split("|") + ["", "", ""])[:4]
+                dest_id = int(dest_id.strip())
+                label = label.strip()
+
+                if origin_id in shapes_by_id and dest_id in shapes_by_id:
+                    origin_node, origin_shape = shapes_by_id[origin_id]
+                    dest_node, dest_shape = shapes_by_id[dest_id]
+                    graph_id = origin_shape.graph_id
+                    graph = graph_map[graph_id]
+
+                    graph.agregar_arista(origin_id, dest_id)
+                    conn = Connection(origin_shape, dest_shape)
+                    conn.label = label
+                    connections.append(conn)
+
+            elif current_section == "VARIABLES":
+                parts = line.split()
+                if len(parts) >= 2:
+                    var_type, var_name = parts[0], parts[1]
+                    if not hasattr(current_graph, 'variables'):
+                        current_graph.variables = {}
+                    current_graph.variables[var_name] = var_type
+
+        work_shapes = temp_shapes
+        texto_panel_derecho[0] = f"Diagrama cargado: {os.path.basename(file_path)}"
+        return True
+
+    except Exception as e:
+        texto_panel_derecho[0] = f"Error al cargar archivo: {str(e)}"
+        return False
+
 
 def compilada():
     global functions, texto_panel_derecho
@@ -267,16 +467,24 @@ def compilada():
         return
 
     # Generate code for all graphs
-
     c_code = ""
+
+
     for graph in functions:
         graph.generate_code_C()
         c_code += graph.code_c + "\n\n"
-        print(c_code)
-    c_code = " "
-    # Update right panel text
-    texto_panel_derecho[0] = c_code
 
+        # These would be uncommented when implemented
+        # graph.generate_code_python()
+        # py_code += graph.code_py + "\n\n"
+
+        # graph.generate_code_asm()
+        # asm_code += graph.code_asm + "\n\n"
+
+    # Update right panel text
+    texto_panel_derecho = [
+        c_code,
+    ]
 
     return texto_panel_derecho
 
@@ -294,17 +502,36 @@ def draw_text_panels(surface):
                 text_surface = font.render(line, True, TEXT_COLOR)
                 surface.blit(text_surface, (panel_x + 10, y_pos + 20 + j * 20))
 
-    compile_btn_rect = pygame.Rect(panel_x, HEIGHT - 50, PANEL_RIGHT_WIDTH - 20, 40)
+    # Buttons
+    btn_y = HEIGHT - 100
+
+    # Compile button
+    compile_btn_rect = pygame.Rect(panel_x, btn_y, PANEL_RIGHT_WIDTH - 20, 40)
     pygame.draw.rect(surface, (0, 150, 0), compile_btn_rect, border_radius=5)
     btn_text = font.render("COMPILAR", True, (255, 255, 255))
-    surface.blit(btn_text, (panel_x + 100000 // 2, HEIGHT - 40))
+    surface.blit(btn_text, (panel_x + 100000 // 2, btn_y + 10))
 
-    return compile_btn_rect
+    # Save button
+    save_btn_rect = pygame.Rect(panel_x, btn_y + 50, (PANEL_RIGHT_WIDTH - 25) // 2, 30)
+    pygame.draw.rect(surface, (100, 100, 200), save_btn_rect, border_radius=5)
+    save_text = font.render("GUARDAR", True, (255, 255, 255))
+    surface.blit(save_text, (panel_x + ((PANEL_RIGHT_WIDTH - 25) // 2 - save_text.get_width()) // 2, btn_y + 60))
+
+    # Load button
+    load_btn_rect = pygame.Rect(panel_x + (PANEL_RIGHT_WIDTH - 25) // 2 + 5, btn_y + 50, (PANEL_RIGHT_WIDTH - 25) // 2,
+                                30)
+    pygame.draw.rect(surface, (200, 100, 100), load_btn_rect, border_radius=5)
+    load_text = font.render("CARGAR", True, (255, 255, 255))
+    surface.blit(load_text, (
+    panel_x + (PANEL_RIGHT_WIDTH - 25) // 2 + 5 + ((PANEL_RIGHT_WIDTH - 25) // 2 - load_text.get_width()) // 2,
+    btn_y + 60))
+
+    return compile_btn_rect, save_btn_rect, load_btn_rect
 
 
 def draw_texto_instructivo(surface):
     font = pygame.font.SysFont('Arial', 12)
-    y_pos = HEIGHT - 180
+    y_pos = HEIGHT - 220
     for i, instruction in enumerate(texto_instructivo):
         text = font.render(instruction, True, TEXT_COLOR)
         surface.blit(text, (10, y_pos + i * 20))
@@ -324,7 +551,7 @@ creating_connection = False
 connection_start = None
 active_text_edit = None
 ctrl_pressed = False
-compile_btn_rect = None
+buttons_rect = None
 
 # Create initial main graph
 initial_shape = WorkShape("inicio", PANEL_LEFT_WIDTH + 100, 100)
@@ -356,6 +583,10 @@ while running:
                         break
 
                 selected_shape = None
+            elif event.key == pygame.K_g:  # Save with G key
+                save_graph()
+            elif event.key == pygame.K_c:  # Load with C key
+                load_graph()
             elif active_text_edit and active_text_edit.editing:
                 if event.key == pygame.K_RETURN:
                     active_text_edit.stop_editing()
@@ -410,8 +641,14 @@ while running:
                                 connection_start = shape
                             break
 
-                elif compile_btn_rect and compile_btn_rect.collidepoint(mouse_pos):
-                    compilada()
+                elif buttons_rect:
+                    compile_rect, save_rect, load_rect = buttons_rect
+                    if compile_rect.collidepoint(mouse_pos):
+                        compilada()
+                    elif save_rect.collidepoint(mouse_pos):
+                        save_graph()
+                    elif load_rect.collidepoint(mouse_pos):
+                        load_graph()
 
             elif event.button == 3:  # Right click
                 if PANEL_LEFT_WIDTH < mouse_pos[0] < WIDTH - PANEL_RIGHT_WIDTH:
@@ -477,7 +714,7 @@ while running:
     for shape in work_shapes:
         shape.draw(screen)
 
-    compile_btn_rect = draw_text_panels(screen)
+    buttons_rect = draw_text_panels(screen)
 
     # Draw dragging template
     if dragging_template:
