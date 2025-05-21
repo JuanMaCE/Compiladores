@@ -29,7 +29,7 @@ def cargar_imagenes():
             image = pygame.image.load(image_path).convert_alpha()
 
             # si se hace mas grande se ve feo
-            base_width = 80
+            base_width = 85
             aspect_ratio = image.get_height() / image.get_width()
             new_height = int(base_width * aspect_ratio)
             images[shape] = pygame.transform.scale(image, (base_width, new_height))
