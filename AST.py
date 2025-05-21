@@ -164,6 +164,13 @@ class NodoRetorno(NodoAST):
     def generar_codigo(self):
         return self.expresion.generar_codigo() + '\n\tret'
 
+class NodoBreak(NodoAST):
+    def __init__(self, expresion):
+        self.expresion = expresion
+        
+    def traducir(self):
+        return f"\tbreak"
+
 class NodoIdentificador(NodoAST):
     def __init__(self, nombre):
         self.nombre = nombre
@@ -229,7 +236,12 @@ class NodoDeclaracion(NodoAST):
         self.nombre = nombre
         
     def traducir(self):
-        return f"{self.nombre}: {self.tipo} = 0" if self.tipo == 'int' else f"{self.nombre}: {self.tipo} = ''"
+        if self.tipo == 'int':
+            return f"{self.nombre}: {self.tipo} = 0"
+        elif self.tipo == 'float':
+            return f"{self.nombre}: {self.tipo} = 0.00"
+        else:
+            return f"{self.nombre}: {self.tipo} = ''"
         
     def generar_codigo(self):
         return f"; Declaración de variable: {self.tipo} {self.nombre}"
@@ -456,7 +468,12 @@ class NodoDeclaracion(NodoAST):
     def traducir(self):
         if self.expresion:
             return f"{self.nombre}: {self.tipo} = {self.expresion.traducir()};"
-        return f"{self.nombre}: {self.tipo} = 0" if self.tipo == 'int' else f"{self.nombre}: {self.tipo} = ''"
+        if self.tipo == 'int':
+            return f"{self.nombre}: {self.tipo} = 0"
+        elif self.tipo == 'float':
+            return f"{self.nombre}: {self.tipo} = 0.00"
+        else:
+            return f"{self.nombre}: {self.tipo} = ''"
         
     def generar_codigo(self):
         codigo = f"; Declaración de {self.tipo} {self.nombre}"

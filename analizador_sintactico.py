@@ -65,7 +65,8 @@ class Parser:
     def argumentos(self):
         argumentos = []
         while self.obtener_token_actual() and self.obtener_token_actual()[1] != ')':
-            argumentos.append(self.expresion_ing())
+            iz, op = self.expresion_ing()
+            argumentos.append(iz)
             if self.obtener_token_actual() and self.obtener_token_actual()[1] == ',':
                 self.coincidir('DELIMITER')
         return argumentos
@@ -97,7 +98,7 @@ class Parser:
 
         if self.obtener_token_actual() and self.obtener_token_actual()[1] == '=':
             self.coincidir('OPERATOR')
-            expresion = self.expresion_ing()
+            expresion, op = self.expresion_ing()
             nodo = NodoAsignacion(nombre, expresion)
         else:
             nodo = NodoDeclaracion(tipo[1], nombre[1])
@@ -109,13 +110,13 @@ class Parser:
         tipo = self.coincidir('KEYWORD')
         nombre = self.coincidir('IDENTIFIER')
         self.coincidir('OPERATOR')
-        expresion = self.expresion_ing()
+        expresion, op = self.expresion_ing()
         self.coincidir('DELIMITER')
         return NodoAsignacion(nombre, expresion)
 
     def retorno(self):
         self.coincidir('KEYWORD')
-        expresion = self.expresion_ing()
+        expresion, op = self.expresion_ing()
         self.coincidir('DELIMITER')
         return NodoRetorno(expresion)
 
@@ -141,6 +142,8 @@ class Parser:
                     instrucciones.append(self.printf_llamada())
                 elif token_actual[1] == 'return':
                     instrucciones.append(self.retorno())
+                elif token_actual[1] == 'break':
+                    instrucciones.append(self.break_statement())
                 elif token_actual[1] in ['int', 'float', 'void', 'double', 'char', 'bool']:
                     instrucciones.append(self.declaracion())
                 else:
@@ -155,7 +158,8 @@ class Parser:
                     instrucciones.append(self.asignacion())
 
             elif token_actual[0] in ['NUMBER', 'STRING']:
-                instrucciones.append(self.expresion_ing())
+                iz, op = self.expresion_ing()
+                instrucciones.append(iz)
                 self.coincidir('DELIMITER')
 
             else:
@@ -173,13 +177,17 @@ class Parser:
             self.coincidir('DELIMITER') # )
             izquierda = NodoLlamarFuncion(llamada, argumentos)
 
+        primerop = self.obtener_token_actual()
+
         while self.obtener_token_actual() and self.obtener_token_actual()[0] == 'OPERATOR':
-            operador = self.coincidir('OPERATOR')
+            operador = self.obtener_token_actual()
+            self.coincidir('OPERATOR')
             if self.obtener_token_actual() and self.obtener_token_actual()[0] == 'OPERATOR':
                 break
             derecha = self.termino()
             izquierda = NodoOperacion(izquierda, operador[1], derecha)
-        return izquierda
+        
+        return izquierda, primerop
 
     def termino(self):
         token = self.obtener_token_actual()
@@ -238,28 +246,21 @@ class Parser:
             return NodoIf(condicion, cuerpo_if, cuerpo_else)
 
     def expresion_logica(self):
-        izquierda = self.expresion_ing()
+        izquierda, primerop = self.expresion_ing()
 
-        if isinstance(izquierda, NodoIdentificador) and (self.obtener_token_actual()[1] == '('):
-            llamada = izquierda.nombre
-            self.coincidir('DELIMITER') # (
-            argumentos = self.argumentos()
-            self.coincidir('DELIMITER') # )
-            return NodoLlamarFuncion(llamada, argumentos)
+        if isinstance(izquierda, NodoLlamarFuncion):
+            return izquierda
         
         if self.obtener_token_actual() and self.obtener_token_actual()[0] == 'OPERATOR':
-            operador = self.obtener_token_actual()
-            print(operador)
-            
-            if operador[1] in ['=', '!', '<', '>']:
-                self.coincidir('OPERATOR')
+            if primerop[1] in ['=', '!', '<', '>']:
                 if self.obtener_token_actual() and self.obtener_token_actual()[1] == '=':
-                    operador = (operador[0], operador[1]+self.obtener_token_actual()[1])
-                    print(operador)
+                    operador = self.obtener_token_actual()
                     self.coincidir('OPERATOR')
             
-            derecha = self.expresion_ing()
-            return NodoOperacionLogica(izquierda, operador[1], derecha)
+            combinado = primerop[1]+operador[1]
+            derecha, primerop = self.expresion_ing()
+
+            return NodoOperacionLogica(izquierda, combinado, derecha)
         
         return izquierda
 
@@ -276,7 +277,8 @@ class Parser:
 
         argumentos = []
         while self.obtener_token_actual() and self.obtener_token_actual()[1] != ')':
-            argumentos.append(self.expresion_ing())
+            iz, op = self.expresion_ing()
+            argumentos.append(iz)
             if self.obtener_token_actual() and self.obtener_token_actual()[1] == ',':
                 self.coincidir('DELIMITER')
 
@@ -311,7 +313,8 @@ class Parser:
 
         argumentos = []
         while self.obtener_token_actual() and self.obtener_token_actual()[1] != ')':
-            argumentos.append(self.expresion_ing())
+            iz, op = self.expresion_ing()
+            argumentos.append(iz)
             if self.obtener_token_actual() and self.obtener_token_actual()[1] == ',':
                 self.coincidir('DELIMITER')
 
@@ -358,8 +361,9 @@ class Parser:
         self.coincidir('DELIMITER')
 
     def break_statement(self):
-        self.coincidir('KEYWORD')
+        expresion = self.coincidir('KEYWORD')
         self.coincidir('DELIMITER')
+        return NodoBreak(expresion)
 
     def operador_abreviado(self):
         operador_actual1 = self.obtener_token_actual()
