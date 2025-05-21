@@ -1,3 +1,5 @@
+from sys import flags
+
 import pygame
 import sys
 import os
@@ -5,6 +7,8 @@ import math
 import json
 from tkinter import filedialog
 from tkinter import Tk
+import tkinter as tk
+from tkinter import filedialog
 from logic.node import Node
 from logic.grafodirigdo import Grafodirigido
 
@@ -14,6 +18,7 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Editor de Diagramas de Flujo")
 
 # Colors
+c_code = ""
 DARK_BG = (0, 0, 0)  # Black background
 PANEL_COLOR = (30, 30, 30)  # Dark gray panels
 TEXT_COLOR = (255, 255, 255)  # White text (general)
@@ -301,16 +306,12 @@ def save_graph():
         return False
 
     try:
+
+
+
         with open(file_path, 'w') as f:
-            f.write("DIAGRAMA_DE_FLUJO\n")
-            f.write(f"Total_grafos:{len(functions)}\n")
-            f.write(f"Ultimo_ID_grafo:{id_graph}\n")
-            f.write(f"Ultimo_ID_nodo:{id_counter}\n\n")
-
             for graph in functions:
-                f.write(f"===GRAFO_ID:{graph.id}===\n")
-                f.write(f"Raiz_ID:{graph.head.id}\n")
-
+                print(graph.id)
                 # Guardar nodos
                 f.write("NODOS:\n")
                 for nodo in graph.adyacencia:
@@ -320,23 +321,8 @@ def save_graph():
                     x = shape.x if shape else 0
                     y = shape.y if shape else 0
                     f.write(f"{nodo.id}|{tipo_str}|{texto}|{x}|{y}|{graph.id}\n")
+                f.write(graph.caminos_grafo())
 
-                # Guardar aristas
-                f.write("ARISTAS:\n")
-                for destino in graph.aristas:
-                    for origen in graph.aristas[destino]:
-                        label = getattr(graph, 'etiquetas', {}).get((origen, destino), "")
-                        tipo_origen = graph.get_tipo(origen)
-                        tipo_destino = graph.get_tipo(destino)
-                        f.write(f"{origen}->{destino}|{tipo_origen}|{tipo_destino}|{label}\n")
-
-                # Guardar variables
-                if hasattr(graph, 'variables'):
-                    f.write("VARIABLES:\n")
-                    for name, typ in graph.variables.items():
-                        f.write(f"{typ} {name}\n")
-
-                f.write("\n")
 
         texto_panel_derecho[0] = f"Diagrama guardado: {os.path.basename(file_path)}"
         return True
@@ -347,117 +333,73 @@ def save_graph():
 
 
 def load_graph():
-    global id_counter, id_graph, functions, work_shapes, connections
 
-    root = Tk()
-    root.withdraw()
+    root = tk.Tk()
+    root.withdraw()  # Oculta la ventana principal de tkinter
+
+    # Abre el cuadro de diálogo para seleccionar el archivo
     file_path = filedialog.askopenfilename(
-        filetypes=[("Text files", "*.txt"), ("All files", "*.*")],
-        title="Seleccionar archivo"
+        title="Selecciona un archivo de texto",
+        filetypes=(("Archivos de texto", "*.txt"), ("Todos los archivos", "*.*"))
     )
-    if not file_path:
-        return False
+
+    if not file_path:  # Si el usuario cancela
+        print("No se seleccionó ningún archivo.")
+        return None
 
     try:
-        # Resetear estructuras
-        functions = []
-        work_shapes = []
-        connections = []
-        shapes_by_id = {}
-        node_by_id = {}
-        temp_shapes = []
-        graph_map = {}
+        with open(file_path, 'r', encoding='utf-8') as file:
+            nodos_flag = False
+            while True:
+                linea = file.readline()
+                if not linea:
+                    break
 
-        with open(file_path, 'r') as f:
-            lines = [line.strip() for line in f if line.strip()]
+                print(linea.strip() == "NODOS:")
 
-        current_section = None
-        current_graph = None
-        root_id = None
+                if linea.strip() != "NODOS:" and nodos_flag == True:
+                    palabra = 0
+                    txt_palabra = ""
+                    id_nodo = 0
+                    tipo_str_nodo = ""
+                    texto_nodo = ""
+                    posicion_x = 0
+                    posicion_y = 0
 
-        for line in lines:
-            if line.startswith("DIAGRAMA_DE_FLUJO"):
-                continue
-            elif line.startswith("Total_grafos:"):
-                continue
-            elif line.startswith("Ultimo_ID_grafo:"):
-                id_graph = int(line.split(":")[1]) + 1
-            elif line.startswith("Ultimo_ID_nodo:"):
-                id_counter = int(line.split(":")[1]) + 1
-            elif line.startswith("===GRAFO_ID:"):
-                graph_id = int(line.split(":")[1])
-                current_graph = Grafodirigido(None, graph_id)
-                functions.append(current_graph)
-                graph_map[graph_id] = current_graph
-            elif line.startswith("Raiz_ID:"):
-                root_id = int(line.split(":")[1])
-            elif line == "NODOS:":
-                current_section = "NODOS"
-            elif line == "ARISTAS:":
-                current_section = "ARISTAS"
-            elif line == "VARIABLES:":
-                current_section = "VARIABLES"
-            elif "|" in line and current_section == "NODOS":
-                parts = line.split("|")
-                node_id = int(parts[0])
-                tipo_str = parts[1]
-                texto = parts[2]
-                x = int(parts[3])
-                y = int(parts[4])
-                g_id = int(parts[5])
+                    for i in range(len(linea)):
+                        letra = linea[i]
+                        if letra != "|":
+                            txt_palabra += letra
+                        if letra == "|":
+                            if palabra == 0:
+                                id_nodo = int(txt_palabra)
+                            elif palabra == 1:
+                                tipo_str_nodo = txt_palabra
+                            elif palabra == 2:
+                                texto_nodo = txt_palabra
+                            elif palabra == 3:
+                                posicion_x = int(txt_palabra)
+                            elif palabra == 4:
+                                posicion_y = int(txt_palabra)
+                            palabra += 1
+                            txt_palabra = ""
 
-                tipo = {
-                    "entrada": 1, "salida": 2, "proceso": 3,
-                    "decision": 4, "fin": 5, "llamada": 6
-                }.get(tipo_str, 0)
+                    create_sshapes = WorkShape(tipo_str_nodo, posicion_x, posicion_y)
+                    work_shapes.append(create_sshapes)
 
-                shape = WorkShape(tipo_str, x, y, texto)
-                shape.id = node_id
-                shape.graph_id = g_id
-                shape.shape_tipo = tipo
 
-                node = Node(node_id, tipo, texto, shape)
-                shapes_by_id[node_id] = (node, shape)
-                temp_shapes.append(shape)
+                elif linea.strip() == "NODOS:":
+                    nodos_flag = True
 
-                graph = graph_map[g_id]
-                graph.agregar_vertice_nodo(node)
-                if node.id == root_id:
-                    graph.head = node
 
-            elif "->" in line and current_section == "ARISTAS":
-                origin_str, rest = line.split("->")
-                origin_id = int(origin_str.strip())
-                dest_id, tipo_o, tipo_d, label = (rest.split("|") + ["", "", ""])[:4]
-                dest_id = int(dest_id.strip())
-                label = label.strip()
 
-                if origin_id in shapes_by_id and dest_id in shapes_by_id:
-                    origin_node, origin_shape = shapes_by_id[origin_id]
-                    dest_node, dest_shape = shapes_by_id[dest_id]
-                    graph_id = origin_shape.graph_id
-                    graph = graph_map[graph_id]
 
-                    graph.agregar_arista(origin_id, dest_id)
-                    conn = Connection(origin_shape, dest_shape)
-                    conn.label = label
-                    connections.append(conn)
 
-            elif current_section == "VARIABLES":
-                parts = line.split()
-                if len(parts) >= 2:
-                    var_type, var_name = parts[0], parts[1]
-                    if not hasattr(current_graph, 'variables'):
-                        current_graph.variables = {}
-                    current_graph.variables[var_name] = var_type
 
-        work_shapes = temp_shapes
-        texto_panel_derecho[0] = f"Diagrama cargado: {os.path.basename(file_path)}"
-        return True
 
+        print("Lectura completada.")
     except Exception as e:
-        texto_panel_derecho[0] = f"Error al cargar archivo: {str(e)}"
-        return False
+        print(f"Error: {e}")
 
 
 def compilada():
@@ -468,7 +410,8 @@ def compilada():
 
     # Generate code for all graphs
     c_code = ""
-
+    global texto_panel_derecho
+    texto_panel_derecho = [" "]
 
     for graph in functions:
         graph.generate_code_C()

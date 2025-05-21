@@ -200,9 +200,9 @@ class Grafodirigido():
     def mostrar(self):
         txt = ""
         for clave, lista_adyacente in self.adyacencia.items():
-            txt += clave.return_info() + " -> "
+            txt += clave.return_info() + "-"
             for adyacente in lista_adyacente:
-                txt += adyacente.return_info() + " | "
+                txt += adyacente.return_info() + "|"
             txt += "\n"
         return txt
 

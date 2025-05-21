@@ -22,7 +22,7 @@ class Node:
         return self.tipo
 
     def return_info(self):
-        return str(self.id) + " | " + str(self.informacion)
+        return str(self.id)
 
     def return_id(self):
         return self.id
