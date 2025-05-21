@@ -321,6 +321,7 @@ def save_graph():
                     x = shape.x if shape else 0
                     y = shape.y if shape else 0
                     f.write(f"{nodo.id}|{tipo_str}|{texto}|{x}|{y}|{graph.id}\n")
+                f.write("ARISTAS:\n")
                 f.write(graph.caminos_grafo())
 
 
@@ -350,6 +351,7 @@ def load_graph():
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
             nodos_flag = False
+            nodos_arista = True
             while True:
                 linea = file.readline()
                 if not linea:
@@ -386,11 +388,17 @@ def load_graph():
 
                     create_sshapes = WorkShape(tipo_str_nodo, posicion_x, posicion_y)
                     work_shapes.append(create_sshapes)
-
+                    nodos_flag = False
+                if linea.strip() != "NODOS:" and nodos_arista == True:
+                    for i in range(len(linea)):
+                        caracter = linea[i]
+                        print(caracter)
 
                 elif linea.strip() == "NODOS:":
                     nodos_flag = True
 
+                elif linea.strip() == "ARISTAS:":
+                    nodos_arista = True
 
 
 
