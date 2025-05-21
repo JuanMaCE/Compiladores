@@ -322,7 +322,7 @@ def save_graph():
                     y = shape.y if shape else 0
                     f.write(f"{nodo.id}|{tipo_str}|{texto}|{x}|{y}|{graph.id}\n")
                 f.write("ARISTAS:\n")
-                f.write(graph.caminos_grafo())
+                f.write(graph.mostrar())
 
 
         texto_panel_derecho[0] = f"Diagrama guardado: {os.path.basename(file_path)}"
@@ -351,15 +351,42 @@ def load_graph():
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
             nodos_flag = False
-            nodos_arista = True
+            nodos_arista = False
+            cantidad_de_funciones = -1
+            create_funtion = True
+            nodos_a_cargar = []
+            shapes_a_cargar = []
             while True:
                 linea = file.readline()
                 if not linea:
                     break
 
-                print(linea.strip() == "NODOS:")
+                # aqui se crean las aristas
+                if linea.strip() != "NODOS:" and nodos_arista == True and nodos_flag == False:
 
-                if linea.strip() != "NODOS:" and nodos_flag == True:
+                    node_beggin: Node
+                    node_final: Node
+                    flag_node_beggin = True
+                    print(linea)
+                    for i in range(len(linea)):
+                        caracter = linea[i].strip()
+                        nodo_buscado: Node
+                        if caracter != "|" and caracter != ",":
+                            for j in range(len(nodos_a_cargar)):
+                                if nodos_a_cargar[j].id == caracter and flag_node_beggin:
+                                    node_beggin = nodos_a_cargar[j]
+                                elif nodos_a_cargar[j].id == caracter and flag_node_beggin == False:
+                                    nodo_final = nodos_a_cargar[j]
+                        connection()
+
+
+
+                elif linea.strip() == "ARISTAS:":
+                    nodos_arista = True
+                    nodos_flag = False
+
+
+                if linea.strip() != "NODOS:" and nodos_flag == True and nodos_arista == False:
                     palabra = 0
                     txt_palabra = ""
                     id_nodo = 0
@@ -386,19 +413,17 @@ def load_graph():
                             palabra += 1
                             txt_palabra = ""
 
+
                     create_sshapes = WorkShape(tipo_str_nodo, posicion_x, posicion_y)
                     work_shapes.append(create_sshapes)
-                    nodos_flag = False
-                if linea.strip() != "NODOS:" and nodos_arista == True:
-                    for i in range(len(linea)):
-                        caracter = linea[i]
-                        print(caracter)
+                    shapes_a_cargar.append(create_sshapes)
+                    nodos_a_cargar.append(create_sshapes)
 
                 elif linea.strip() == "NODOS:":
                     nodos_flag = True
+                    nodos_arista = False
+                    cantidad_de_funciones += 1
 
-                elif linea.strip() == "ARISTAS:":
-                    nodos_arista = True
 
 
 
