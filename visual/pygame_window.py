@@ -106,7 +106,6 @@ class Connection:
 
         if inicio.graph != 0:
             functions[0].eliminar_por_id(self.b.id)
-            print(self.b.id, "|" , self.b.shape_tipo, "|" , self.b.return_texto() , "|", self.b, "|", " eso almacena mi nodo")
             functions[inicio.graph].agregar_vertice(self.b.id, self.b.shape_tipo, self.b.return_texto(), self.b)
             functions[inicio.graph].agregar_arista(inicio.id, fin.id)
         else:
@@ -275,6 +274,12 @@ print("  ")
 print("  ")
 print("  ")
 
-for function in functions:
-    function.generate_code_C()
-    print(function.code_c)
+
+
+for i in range(len(functions)):
+    if i != 0:
+        functions[i].generate_code_C()
+        print(functions[i].code_c)
+
+def_main.generate_code_C()
+print(def_main.code_c)

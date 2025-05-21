@@ -7,7 +7,7 @@ class Grafodirigido():
         self.head = cabeza
         self.adyacencia = {}
         self.adyacencia[self.head] = []
-        self.code_c = "#include <stdio.h>\n#include <stdbool.h>\nint main() {\n"  # Usa una variable temporal para generación
+        self.code_c = "int main() {\n"  # Usa una variable temporal para generación
         self.variables = {}
         self.id = id
 
@@ -58,7 +58,7 @@ class Grafodirigido():
         inicio = self.head
         nodos_visitados = []
         line = 1
-        new_code_c = "#include <stdio.h>\n#include <stdbool.h>\nint main() {\n"
+        new_code_c = "int main() {\n"
         return  self._generate_code_C(inicio, nodos_visitados, False, line, new_code_c)
 
     def _generate_code_C(self, node: Node, nodos_visitados, flag, line, new_code_c) -> str:
@@ -70,7 +70,7 @@ class Grafodirigido():
             return "CICLO"
 
         if node.return_tipo() == 0 and self.id != 0:
-            self.code_c = f"{node.informacion}() ""{\n"
+            self.code_c = f"{node.informacion}""{\n"
 
         if node.return_tipo()  == 1:
             a = self.generate_lectura(node.informacion, new_code_c)
@@ -99,6 +99,9 @@ class Grafodirigido():
 
         elif node.return_tipo() == 5:
             self.code_c += "}"
+
+        elif node.return_tipo() == 6:
+            self.code_c += node.informacion + ";" + "\n"
 
         if len(self.adyacencia[node]) == 0:
             return current
