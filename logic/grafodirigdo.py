@@ -78,6 +78,7 @@ class Grafodirigido():
 
         elif node.return_tipo() == 2:
             new_text = self.generate_imprimir(node.informacion)
+            print(new_code_c)
             new_code_c += self.generate_imprimir(node.informacion)
             self.code_c += new_text
 
