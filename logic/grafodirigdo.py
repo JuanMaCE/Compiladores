@@ -78,7 +78,6 @@ class Grafodirigido():
 
         elif node.return_tipo() == 2:
             new_text = self.generate_imprimir(node.informacion)
-            print(new_code_c)
             new_code_c += self.generate_imprimir(node.informacion)
             self.code_c += new_text
 
@@ -150,13 +149,13 @@ class Grafodirigido():
 
     def generate_imprimir(self, txt: str) -> str:
         words = txt.split()
+
         if len(words) == 2:# Dividir el texto en palabras
             var = words[1]
-            new_txt = ""
+            print(var)
 
             if var in self.variables:
                 type_var = self.variables[var]
-
                 if type_var == "int":
                     new_txt = f'printf("%d\\n", {var});\n'
                 elif type_var == "str" or type_var == "char[]":
@@ -171,9 +170,13 @@ class Grafodirigido():
                     new_txt = f'printf("%c\\n", {var});\n'
                 else:
                     new_txt = f'printf("%s\\n", {var});\n'
+                    return new_txt
+            else:
+                new_txt = f'printf("{var}");\n'
                 return new_txt
         else:
-            return txt
+            new_txt = f'printf("{txt}");\n'
+            return new_txt
 
     def generate_if(self, condicion: str):
         new_txt = f"if ({condicion}) ""{" + "\n"

@@ -1,6 +1,7 @@
 import pygame
 import sys
 import math
+import json
 from logic.node import Node
 from logic.grafodirigdo import Grafodirigido
 
@@ -19,14 +20,10 @@ colors = {
     "PROCESO": (70, 130, 180),
     "DECISIÓN": (50, 200, 120),
     "FIN": (220, 70, 70),
-    "CallMeBaby" : (220, 130, 70)
-
+    "CallMeBaby": (220, 130, 70)
 }
 
 shape_types = list(colors.keys())
-
-
-
 
 
 class Shape:
@@ -61,7 +58,7 @@ class Shape:
         return self.x + self.width // 2, self.y + self.height // 2
 
     def return_texto(self):
-        return  self.texto
+        return self.texto
 
     def draw(self, surface):
         color = colors[self.tipo]
@@ -92,16 +89,32 @@ class Shape:
         text_rect = text_surface.get_rect(center=r.center)
         surface.blit(text_surface, text_rect)
 
-    def set_graph(self, valor:int):
+    def set_graph(self, valor: int):
         self.graph = valor
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'tipo': self.tipo,
+            'x': self.x,
+            'y': self.y,
+            'texto': self.texto,
+            'graph': self.graph,
+            'shape_tipo': self.shape_tipo
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        shape = cls(data['id'], data['tipo'], data['x'], data['y'], data['texto'])
+        shape.graph = data['graph']
+        shape.shape_tipo = data['shape_tipo']
+        return shape
 
 
 class Connection:
     def __init__(self, inicio: Shape, fin: Shape):
         self.a = inicio
         self.b = fin
-        indice = self.b.tipo
         indice = self.b.tipo
 
         if inicio.graph != 0:
@@ -110,7 +123,6 @@ class Connection:
             functions[inicio.graph].agregar_arista(inicio.id, fin.id)
         else:
             functions[inicio.graph].agregar_arista(inicio.id, fin.id)
-
 
     def draw(self, surface):
         ax, ay = self.a.center()
@@ -130,6 +142,113 @@ class Connection:
         ]
         pygame.draw.polygon(surface, (0, 0, 0), points)
 
+    def to_dict(self):
+        return {
+            'inicio_id': self.a.id,
+            'fin_id': self.b.id
+        }
+
+
+def save_to_file(filename='diagrama.json'):
+    data = {
+        'shapes': [shape.to_dict() for shape in shapes],
+        'connections': [conn.to_dict() for conn in connections],
+        'next_id': id + 1,
+        'next_graph_id': id_graph + 1,
+        'functions': [func.to_dict() for func in functions]
+    }
+
+    with open(filename, 'w') as f:
+        json.dump(data, f, indent=2)
+
+    print(f"Diagrama guardado en {filename}")
+
+
+def load_from_file(filename='diagrama.json'):
+    global shapes, connections, id, id_graph, functions
+
+    try:
+        with open(filename, 'r') as f:
+            data = json.load(f)
+
+        # Resetear todo
+        shapes = []
+        connections = []
+        functions = []
+        id = data['next_id'] - 1
+        id_graph = data['next_graph_id'] - 1
+
+        # Recrear shapes
+        id_to_shape = {}
+        for shape_data in data['shapes']:
+            shape = Shape.from_dict(shape_data)
+            shapes.append(shape)
+            id_to_shape[shape.id] = shape
+
+        # Recrear conexiones
+        for conn_data in data['connections']:
+            inicio = id_to_shape[conn_data['inicio_id']]
+            fin = id_to_shape[conn_data['fin_id']]
+            connections.append(Connection(inicio, fin))
+
+        # Recrear funciones (grafos)
+        for func_data in data['functions']:
+            grafo = Grafodirigido.from_dict(func_data, id_to_shape)
+            functions.append(grafo)
+
+        print(f"Diagrama cargado desde {filename}")
+        return True
+    except Exception as e:
+        print(f"Error al cargar el archivo: {e}")
+        return False
+
+
+# Necesitarás implementar to_dict() y from_dict() en tus clases Node y Grafodirigido
+# Aquí hay un ejemplo de cómo podrían verse:
+
+# En la clase Node:
+"""
+def to_dict(self):
+    return {
+        'id': self.id,
+        'tipo': self.tipo,
+        'info': self.info,
+        'shape_id': self.shape.id if self.shape else None
+    }
+
+@classmethod
+def from_dict(cls, data, id_to_shape):
+    shape = id_to_shape.get(data['shape_id'])
+    return cls(data['id'], data['tipo'], data['info'], shape)
+"""
+
+# En la clase Grafodirigido:
+"""
+def to_dict(self):
+    return {
+        'id': self.id,
+        'nodos': [nodo.to_dict() for nodo in self.lista_vertices],
+        'aristas': [(a, b) for a, b in self.lista_aristas]
+    }
+
+@classmethod
+def from_dict(cls, data, id_to_shape):
+    # Crear el grafo con el primer nodo
+    first_node_data = data['nodos'][0]
+    first_node = Node.from_dict(first_node_data, id_to_shape)
+    grafo = cls(first_node, data['id'])
+
+    # Añadir el resto de nodos
+    for node_data in data['nodos'][1:]:
+        node = Node.from_dict(node_data, id_to_shape)
+        grafo.agregar_vertice(node.id, node.tipo, node.info, node.shape)
+
+    # Añadir aristas
+    for a, b in data['aristas']:
+        grafo.agregar_arista(a, b)
+
+    return grafo
+"""
 
 shapes = []
 connections = []
@@ -143,10 +262,9 @@ shape_beggin = shape_types[0]
 create_shape_beggin = Shape(0, shape_beggin, 50, 50)
 shapes.append(create_shape_beggin)
 node_inicio = Node(id, 0, "INICIO", create_shape_beggin)
-def_main =  Grafodirigido(node_inicio, id_graph) # -> aqui se crea el grafo
+def_main = Grafodirigido(node_inicio, id_graph)  # -> aqui se crea el grafo
 functions.append(def_main)
 create_shape_beggin.set_graph(def_main.id)
-
 
 
 def edit_text(shape: Shape):
@@ -217,6 +335,12 @@ while running:
                         connections[:] = [c for c in connections if c.a != s and c.b != s]
                         shapes.remove(s)
                         break
+            # Guardar con Ctrl+S
+            elif event.key == pygame.K_s and pygame.key.get_mods() & pygame.KMOD_CTRL:
+                save_to_file()
+            # Cargar con Ctrl+V
+            elif event.key == pygame.K_v and pygame.key.get_mods() & pygame.KMOD_CTRL:
+                load_from_file()
 
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:  # click izquierdo
@@ -231,7 +355,6 @@ while running:
                             if connecting_from and connecting_from != s:
                                 s.set_graph(connecting_from.graph)
                                 arista = Connection(connecting_from, s)
-
                                 connections.append(arista)
                                 connecting_from = None
                             else:
@@ -245,7 +368,6 @@ while running:
                         selected_shape = s
                         s.selected = True
                         edit_text(s)
-
                         break
 
         elif event.type == pygame.MOUSEBUTTONUP:
@@ -268,13 +390,10 @@ while running:
     pygame.display.flip()
     clock.tick(60)
 
-
 print("Grafos:")
 print("  ")
 print("  ")
 print("  ")
-
-
 
 for i in range(len(functions)):
     if i != 0:

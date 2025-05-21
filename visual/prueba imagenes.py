@@ -273,7 +273,7 @@ def compilada():
         graph.generate_code_C()
         c_code += graph.code_c + "\n\n"
         print(c_code)
-
+    c_code = " "
     # Update right panel text
     texto_panel_derecho[0] = c_code
 
