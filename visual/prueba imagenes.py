@@ -2,6 +2,9 @@ import pygame
 import sys
 import os
 import math
+import json
+from tkinter import filedialog
+from tkinter import Tk
 from logic.node import Node
 from logic.grafodirigdo import Grafodirigido
 
@@ -62,7 +65,9 @@ def cargar_imagenes():
 shape_images = cargar_imagenes()
 
 texto_panel_derecho = [
-    ""
+    "Código en C generado",
+    "Código en Python generado",
+    "Resultado en Ensamblador"
 ]
 
 texto_instructivo = [
@@ -71,7 +76,8 @@ texto_instructivo = [
     "2. Haz clic derecho para editar texto",
     "3. Ctrl + clic para conectar formas(mantener)",
     "4. Botón COMPILAR para generar código",
-    "5. Suprimir: borrar forma seleccionada"
+    "5. Suprimir: borrar forma seleccionada",
+    "6. G: Guardar grafo, C: Cargar grafo"
 ]
 
 
@@ -196,6 +202,25 @@ class WorkShape:
     def return_texto(self):
         return self.texto
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'tipo': self.tipo,
+            'x': self.x,
+            'y': self.y,
+            'texto': self.texto,
+            'graph_id': self.graph_id,
+            'shape_tipo': self.shape_tipo
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        shape = cls(data['tipo'], data['x'], data['y'], data['texto'])
+        shape.id = data['id']
+        shape.graph_id = data['graph_id']
+        shape.shape_tipo = data['shape_tipo']
+        return shape
+
 
 class Connection:
     def __init__(self, start_shape, end_shape):
@@ -259,6 +284,99 @@ class Connection:
             label = font.render(self.label, True, (255, 255, 255))
             surface.blit(label, (mid_x - 10, mid_y - 10))
 
+    def to_dict(self):
+        return {
+            'start_id': self.start.id,
+            'end_id': self.end.id,
+            'label': self.label
+        }
+
+
+def save_graph():
+    root = Tk()
+    root.withdraw()
+    file_path = filedialog.asksaveasfilename(
+        defaultextension=".json",
+        filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+    )
+
+    if not file_path:
+        return
+
+    graph_data = {
+        'shapes': [shape.to_dict() for shape in work_shapes],
+        'connections': [conn.to_dict() for conn in connections],
+        'id_counter': id_counter,
+        'id_graph': id_graph
+    }
+
+    with open(file_path, 'w') as f:
+        json.dump(graph_data, f, indent=4)
+
+    texto_panel_derecho[0] = f"Grafo guardado en:\n{file_path}"
+
+
+def load_graph():
+    global id_counter, id_graph, functions, work_shapes, connections
+
+    root = Tk()
+    root.withdraw()
+    file_path = filedialog.askopenfilename(
+        filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+    )
+
+    if not file_path:
+        return
+
+    try:
+        with open(file_path, 'r') as f:
+            graph_data = json.load(f)
+
+        # Reset current state
+        work_shapes = []
+        connections = []
+        functions = []
+        id_counter = graph_data['id_counter']
+        id_graph = graph_data['id_graph']
+
+        # Load shapes first
+        id_map = {}
+        for shape_data in graph_data['shapes']:
+            shape = WorkShape.from_dict(shape_data)
+            work_shapes.append(shape)
+            id_map[shape_data['id']] = shape
+
+            # Recreate graphs for "inicio" nodes
+            if shape.tipo == "inicio":
+                node = Node(shape.id, shape.shape_tipo, shape.texto, shape)
+                new_graph = Grafodirigido(node, shape.graph_id)
+                functions.append(new_graph)
+
+        # Load connections
+        for conn_data in graph_data['connections']:
+            start_shape = id_map.get(conn_data['start_id'])
+            end_shape = id_map.get(conn_data['end_id'])
+            if start_shape and end_shape:
+                connections.append(Connection(start_shape, end_shape))
+
+        # Rebuild the graphs
+        for graph in functions:
+            # Add all nodes that belong to this graph
+            for shape in work_shapes:
+                if shape.graph_id == graph.id and shape.tipo != "inicio":
+                    graph.agregar_vertice(shape.id, shape.shape_tipo, shape.texto, shape)
+
+            # Add all connections
+            for conn in connections:
+                if conn.start.graph_id == graph.id and conn.end.graph_id == graph.id:
+                    graph.agregar_arista(conn.start.id, conn.end.id)
+
+        texto_panel_derecho[0] = f"Grafo cargado desde:\n{file_path}"
+        return True
+    except Exception as e:
+        texto_panel_derecho[0] = f"Error cargando archivo:\n{str(e)}"
+        return False
+
 
 def compilada():
     global functions, texto_panel_derecho
@@ -267,16 +385,27 @@ def compilada():
         return
 
     # Generate code for all graphs
-
     c_code = ""
+    py_code = ""
+    asm_code = ""
+
     for graph in functions:
         graph.generate_code_C()
         c_code += graph.code_c + "\n\n"
-        print(c_code)
+
+        # These would be uncommented when implemented
+        # graph.generate_code_python()
+        # py_code += graph.code_py + "\n\n"
+
+        # graph.generate_code_asm()
+        # asm_code += graph.code_asm + "\n\n"
 
     # Update right panel text
-    texto_panel_derecho[0] = c_code
-
+    texto_panel_derecho = [
+        c_code,
+        "Código Python no implementado",  # Replace with py_code when ready
+        "Código Ensamblador no implementado"  # Replace with asm_code when ready
+    ]
 
     return texto_panel_derecho
 
@@ -294,17 +423,36 @@ def draw_text_panels(surface):
                 text_surface = font.render(line, True, TEXT_COLOR)
                 surface.blit(text_surface, (panel_x + 10, y_pos + 20 + j * 20))
 
-    compile_btn_rect = pygame.Rect(panel_x, HEIGHT - 50, PANEL_RIGHT_WIDTH - 20, 40)
+    # Buttons
+    btn_y = HEIGHT - 100
+
+    # Compile button
+    compile_btn_rect = pygame.Rect(panel_x, btn_y, PANEL_RIGHT_WIDTH - 20, 40)
     pygame.draw.rect(surface, (0, 150, 0), compile_btn_rect, border_radius=5)
     btn_text = font.render("COMPILAR", True, (255, 255, 255))
-    surface.blit(btn_text, (panel_x + 100000 // 2, HEIGHT - 40))
+    surface.blit(btn_text, (panel_x + (PANEL_RIGHT_WIDTH - 20 - btn_text.get_width()) // 2, btn_y + 10))
 
-    return compile_btn_rect
+    # Save button
+    save_btn_rect = pygame.Rect(panel_x, btn_y + 50, (PANEL_RIGHT_WIDTH - 25) // 2, 30)
+    pygame.draw.rect(surface, (100, 100, 200), save_btn_rect, border_radius=5)
+    save_text = font.render("GUARDAR", True, (255, 255, 255))
+    surface.blit(save_text, (panel_x + ((PANEL_RIGHT_WIDTH - 25) // 2 - save_text.get_width()) // 2, btn_y + 60))
+
+    # Load button
+    load_btn_rect = pygame.Rect(panel_x + (PANEL_RIGHT_WIDTH - 25) // 2 + 5, btn_y + 50, (PANEL_RIGHT_WIDTH - 25) // 2,
+                                30)
+    pygame.draw.rect(surface, (200, 100, 100), load_btn_rect, border_radius=5)
+    load_text = font.render("CARGAR", True, (255, 255, 255))
+    surface.blit(load_text, (
+    panel_x + (PANEL_RIGHT_WIDTH - 25) // 2 + 5 + ((PANEL_RIGHT_WIDTH - 25) // 2 - load_text.get_width()) // 2,
+    btn_y + 60))
+
+    return compile_btn_rect, save_btn_rect, load_btn_rect
 
 
 def draw_texto_instructivo(surface):
     font = pygame.font.SysFont('Arial', 12)
-    y_pos = HEIGHT - 180
+    y_pos = HEIGHT - 220
     for i, instruction in enumerate(texto_instructivo):
         text = font.render(instruction, True, TEXT_COLOR)
         surface.blit(text, (10, y_pos + i * 20))
@@ -324,7 +472,7 @@ creating_connection = False
 connection_start = None
 active_text_edit = None
 ctrl_pressed = False
-compile_btn_rect = None
+buttons_rect = None
 
 # Create initial main graph
 initial_shape = WorkShape("inicio", PANEL_LEFT_WIDTH + 100, 100)
@@ -356,6 +504,10 @@ while running:
                         break
 
                 selected_shape = None
+            elif event.key == pygame.K_g:  # Save with G key
+                save_graph()
+            elif event.key == pygame.K_c:  # Load with C key
+                load_graph()
             elif active_text_edit and active_text_edit.editing:
                 if event.key == pygame.K_RETURN:
                     active_text_edit.stop_editing()
@@ -410,8 +562,14 @@ while running:
                                 connection_start = shape
                             break
 
-                elif compile_btn_rect and compile_btn_rect.collidepoint(mouse_pos):
-                    compilada()
+                elif buttons_rect:
+                    compile_rect, save_rect, load_rect = buttons_rect
+                    if compile_rect.collidepoint(mouse_pos):
+                        compilada()
+                    elif save_rect.collidepoint(mouse_pos):
+                        save_graph()
+                    elif load_rect.collidepoint(mouse_pos):
+                        load_graph()
 
             elif event.button == 3:  # Right click
                 if PANEL_LEFT_WIDTH < mouse_pos[0] < WIDTH - PANEL_RIGHT_WIDTH:
@@ -477,7 +635,7 @@ while running:
     for shape in work_shapes:
         shape.draw(screen)
 
-    compile_btn_rect = draw_text_panels(screen)
+    buttons_rect = draw_text_panels(screen)
 
     # Draw dragging template
     if dragging_template:
