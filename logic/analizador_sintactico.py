@@ -291,14 +291,15 @@ class Parser:
         if not formato_str:
             raise Exception("No se encontró cadena de formato en printf.")
 
-        formatos = formato_str.strip('"').split()
+        formatos = re.findall(r'%(?:lf|d|f|c|s)', formato_str)
 
-        variables = [valor.nombre for valor in argumentos if isinstance(valor, NodoIdentificador)]
+        variables = [valor for valor in argumentos if isinstance(valor, NodoIdentificador)]
 
-        resultado = [(('IDENTIFIER', var), formato_a_tipo_python.get(fmt, None)) for fmt, var in zip(formatos, variables)]
+        resultado = [(var, formato_a_tipo_python.get(fmt, None)) for fmt, var in zip(formatos, variables)]
 
         self.coincidir('DELIMITER')
-        return NodoPrintf(resultado, formato_str)
+
+        return NodoPrintf(resultado, formato_str, argumentos)
 
     def scanf_llamada(self):
         formato_a_tipo_python = {

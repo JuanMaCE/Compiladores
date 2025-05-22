@@ -3,41 +3,30 @@ from analizador_sintactico import *
 from analizador_semantico import *
 
 codigo_fuente = """
-float sumar(float a, float b) {
+int sumar(int a, int b) {
     return a + b;
 }
 
 void main() {
-    float x = 5.34;
-    float y;
+    int x;
+    int y;
     printf("Ingrese Primer Numero: ")
-    scanf("%f", &x);
+    scanf("%d", &x);
     printf("Ingrese Segundo Numero: ")
-    scanf("%f", &y);
-    float resultado = sumar(x, y);
-
-    if (resultado <= 0){
-        printf("La suma %f + %f es: %f", &x, &y, &resultado);
-    }
-
-    while (resultado <= 5) {
-        printf("%f", &resultado);
-        break;
-    }
-    for (int i = 1; i <= 5; i++) {
-        printf("%d", &i);
-    }
+    scanf("%d", &y);
+    int resultado = sumar(x, y);
+    printf("%d", &resultado);
 
     return 0;
 }
 """
 
+def guardar_codigo_asm(nombre_archivo: str, codigo: str):
+    with open(nombre_archivo+'.asm', "w") as archivo:
+        archivo.write(codigo)
+
 def main():
     tokens = identificar_tokens(codigo_fuente)
-    print("Tokens encontrados:")
-    for tipo, valor in tokens:
-        print(f'{tipo}: {valor}')
-
     try:
         print('\nIniciando analisis sintactico...')
         parser = Parser(tokens)
@@ -57,11 +46,12 @@ def main():
         print(codigo_completo)
         print("------------------------------")
         print('')
-        '''codigo_asm = arbol_ast.generar_codigo()
+        codigo_asm = arbol_ast.generar_codigo()
         print("------------------------------")
         print("Código Ensamblador Generado:")
         print(codigo_asm)
-        print("------------------------------")'''
+        guardar_codigo_asm('nombrearchivo', codigo_asm)
+        print("------------------------------")
     except SyntaxError as e:
         print(e)
 
