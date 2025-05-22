@@ -22,7 +22,7 @@ c_code = ""
 DARK_BG = (0, 0, 0)  # Black background
 PANEL_COLOR = (30, 30, 30)  # Dark gray panels
 TEXT_COLOR = (255, 255, 255)  # White text (general)
-SHAPE_TEXT_COLOR = (0, 0, 0)  # Black text for shapes
+SHAPE_TEXT_COLOR = (255, 255, 255)  # Black text for shapes
 ACCENT_COLOR = (0, 100, 200)  # Blue for selection
 SHAPE_COLOR = (200, 200, 200)  # Default shape color
 
@@ -193,18 +193,43 @@ class WorkShape:
         # Draw image
         surface.blit(self.image, (self.x, self.y))
 
-        # Draw text in black
+        # Draw text with black background
         font = pygame.font.SysFont('Arial', 14)
+
         if self.editing:
-            text = font.render(self.edit_text, True, (255, 0, 0))  # Red when editing
+            text = font.render(self.edit_text, True, (255, 255, 255))  # White text when editing
+            # Draw editing background (light gray)
             pygame.draw.rect(surface, (240, 240, 240),
                              (self.x + 5, self.y + self.height // 2 - 10,
                               self.width - 10, 20))
+            text_rect = text.get_rect(center=(self.x + self.width // 2, self.y + self.height // 2))
+
+            # Draw black background behind editing text
+            padding = 4
+            bg_rect = pygame.Rect(
+                text_rect.x - padding,
+                text_rect.y - padding,
+                text_rect.width + padding * 2,
+                text_rect.height + padding * 2
+            )
+            pygame.draw.rect(surface, (0, 0, 0), bg_rect)
+
+            surface.blit(text, text_rect)
         else:
             text = font.render(self.texto, True, SHAPE_TEXT_COLOR)
+            text_rect = text.get_rect(center=(self.x + self.width // 2, self.y + self.height // 2))
 
-        text_rect = text.get_rect(center=(self.x + self.width // 2, self.y + self.height // 2))
-        surface.blit(text, text_rect)
+            # Draw black background for normal text
+            padding = 4
+            bg_rect = pygame.Rect(
+                text_rect.x - padding,
+                text_rect.y - padding,
+                text_rect.width + padding * 2,
+                text_rect.height + padding * 2
+            )
+            pygame.draw.rect(surface, (0, 0, 0), bg_rect)
+
+            surface.blit(text, text_rect)
 
         # Highlight selection
         if self.selected:
