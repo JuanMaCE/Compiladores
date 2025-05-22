@@ -14,6 +14,7 @@ class Node:
         self.tipo = tipo
         self.informacion = informacion
         self.shape = shape
+        self.id_graph = None
 
 
 
@@ -21,7 +22,7 @@ class Node:
         return self.tipo
 
     def return_info(self):
-        return str(self.id) + " | " + str(self.informacion)
+        return str(self.id)
 
     def return_id(self):
         return self.id
@@ -29,3 +30,6 @@ class Node:
     def node_change_info(self, txt):
         self.informacion = txt
 
+    def connect_graph(self, id_graph: int):
+        self.id_graph = id_graph
+        return self.id_graph

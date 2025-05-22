@@ -1,21 +1,26 @@
 from os.path import split
-
+import json
 from logic.node import Node
 
 class Grafodirigido():
-    def __init__(self, cabeza: Node):
+    def __init__(self, cabeza: Node, id):
         self.head = cabeza
         self.adyacencia = {}
         self.adyacencia[self.head] = []
-        self.code_c = "#include <stdio.h>" + "\n" + "#include <stdbool.h> " "\n"
+        self.code_c = "int main() {\n"  # Usa una variable temporal para generación
         self.variables = {}
+        self.id = id
 
     def agregar_vertice(self, id: int, tipo: int, informacion: str, shape) -> Node:
         new_node = Node(id, tipo, informacion, shape)
         if new_node not in self.adyacencia:
             self.adyacencia[new_node] = []
-        return new_node  # Importante para usar luego en aristas
+        return new_node
 
+    def agregar_vertice_nodo(self, node):
+        if node not in self.adyacencia:
+            self.adyacencia[node] = []
+        return node
     def obtener_nodo_por_id(self, id: int) -> Node:
         for nodo in self.adyacencia:
             if nodo.return_id() == id:
@@ -34,7 +39,6 @@ class Grafodirigido():
 
     def _caminos_grafo(self, node: Node, nodos_visitados) -> str:
         if node in nodos_visitados:
-            print(node)
             return "CICLO"  # Para evitar ciclos
         nodos_visitados.append(node)
         current = node.return_info()
@@ -50,24 +54,27 @@ class Grafodirigido():
             return f"{current}({izquierda},{derecha})"
 
     def generate_code_C(self):
+        self.variables = {}
         inicio = self.head
-        if self.head.informacion == 'INICIO':
-            self.code_c += 'void main()' + '{' + '\n'
-        else:
-            self.code_c+=self.head.informacion+'{'+'\n'
         nodos_visitados = []
         line = 1
-        return self._generate_code_C(inicio, nodos_visitados, False, line)
+        new_code_c = "int main() {\n"
+        return  self._generate_code_C(inicio, nodos_visitados, False, line, new_code_c)
 
-    def _generate_code_C(self, node: Node, nodos_visitados, flag, line) -> str:
+    def _generate_code_C(self, node: Node, nodos_visitados, flag, line, new_code_c) -> str:
         current = node.return_info()
+
+
         if node in nodos_visitados:
             self.generate_while(node)
-            self.flag2 = True
             return "CICLO"
 
+        if node.return_tipo() == 0 and self.id != 0:
+            self.code_c = f"{node.informacion}""{\n"
+
         if node.return_tipo()  == 1:
-            self.generate_lectura(node.informacion)
+            a = self.generate_lectura(node.informacion, new_code_c)
+            new_code_c = a
 
         elif node.return_tipo() == 2:
             new_text = self.generate_imprimir(node.informacion)
@@ -75,21 +82,25 @@ class Grafodirigido():
 
         elif node.return_tipo() == 3:
             txt = node.informacion
-            print(txt)
-
             self.code_c += self.generate_entrada(txt) + "\n"
+
             if len(txt.split()) > 1:
                 self.variables[txt.split()[1]] = txt.split()[0]
-
+            else:
+                pass
 
         elif node.return_tipo() == 4:
             txt = self.generate_if(node.informacion)
+            new_code_c += self.generate_if(node.informacion)
             self.code_c += txt
             flag = True
 
 
         elif node.return_tipo() == 5:
-                self.code_c += "}"
+            self.code_c += "}"
+
+        elif node.return_tipo() == 6:
+            self.code_c += node.informacion + ";" + "\n"
 
         if len(self.adyacencia[node]) == 0:
             return current
@@ -102,19 +113,19 @@ class Grafodirigido():
         if len(hijos) == 0:
             return current
         elif len(hijos) == 1:
-            return self._generate_code_C(hijos[0], nodos_visitados, flag, line)
+            return self._generate_code_C(hijos[0], nodos_visitados, flag, line, new_code_c)
         elif len(hijos) == 2:
 
             if flag == False:
-                izquierda = self._generate_code_C(hijos[0], nodos_visitados, flag, line)
-                derecha = self._generate_code_C(hijos[1], nodos_visitados, flag, line)
+                izquierda = self._generate_code_C(hijos[0], nodos_visitados, flag, line, new_code_c)
+                derecha = self._generate_code_C(hijos[1], nodos_visitados, flag, line, new_code_c)
             elif flag == True:
-                izquierda = self._generate_code_C(hijos[0], nodos_visitados, flag, line)
+                izquierda = self._generate_code_C(hijos[0], nodos_visitados, flag, line, new_code_c)
                 if izquierda == "CICLO":
-                    derecha = self._generate_code_C(hijos[1], nodos_visitados, flag, line)
+                    derecha = self._generate_code_C(hijos[1], nodos_visitados, flag, line, new_code_c)
                 else:
                     self.code_c += "\n" + "else{" + "\n"
-                    derecha = self._generate_code_C(hijos[1], nodos_visitados, flag, line)
+                    derecha = self._generate_code_C(hijos[1], nodos_visitados, flag, line, new_code_c)
                     self.code_c += "}"
                 flag = False
 
@@ -137,14 +148,14 @@ class Grafodirigido():
 
     def generate_imprimir(self, txt: str) -> str:
         words = txt.split()
+
         if len(words) == 2:# Dividir el texto en palabras
             var = words[1]
-            new_txt = ""
             print(self.variables)
-
+            print(var)
             if var in self.variables:
                 type_var = self.variables[var]
-
+                print(type_var)
                 if type_var == "int":
                     new_txt = f'printf("%d\\n", {var});\n'
                 elif type_var == "str" or type_var == "char[]":
@@ -160,19 +171,25 @@ class Grafodirigido():
                 else:
                     new_txt = f'printf("%s\\n", {var});\n'
                 return new_txt
+            else:
+                new_txt = f'printf("{var}");\n'
+                return new_txt
         else:
-            return txt
+            new_txt = f'printf("{txt}");\n'
+            return new_txt
 
     def generate_if(self, condicion: str):
         new_txt = f"if ({condicion}) ""{" + "\n"
         return new_txt
 
-    def generate_lectura(self, texto):
-
+    def generate_lectura(self, texto, code_c):
         if len(texto.split()) == 2:
             self.code_c += f'scanf("%d", &{texto.split()[1]});' +"\n"
+            code_c += f'scanf("%d", &{texto.split()[1]});' +"\n"
         else:
             self.code_c += texto + "\n"
+            code_c += texto + "\n"
+        return code_c
 
     def generate_entrada(self, var):
         txt = str(var) + ";"
@@ -183,13 +200,18 @@ class Grafodirigido():
     def mostrar(self):
         txt = ""
         for clave, lista_adyacente in self.adyacencia.items():
-            txt += clave.return_info() + " -> "
+            txt += clave.return_info() + "|"
             for adyacente in lista_adyacente:
-                txt += adyacente.return_info() + " | "
+                txt += adyacente.return_info() + ","
+
             txt += "\n"
         return txt
 
-
+    def eliminar_por_id(self, id: int):
+        nodo = self.obtener_nodo_por_id(id)
+        if nodo:
+            return self.eliminar(nodo)
+        return None
 
 
     def eliminar(self, nodo: Node):
@@ -201,5 +223,70 @@ class Grafodirigido():
                 if adyacente == nodo:
                     lista_adyacente.remove(adyacente)
 
-
         return valor
+
+    def return_id(self):
+        return self.id
+
+    def change_code_c(self):
+        self.code_c = ""
+
+    def devolver_list_of_vertices(self):
+        vertcies = []
+        for nodos in self.adyacencia.keys():
+            vertcies.append(nodos)
+        return vertcies
+
+    def return_graph(self):
+        return self.adyacencia
+
+    def guardar_en_archivo(self, ruta):
+        data = {
+            "id": self.id,
+            "head": self.head.return_id(),
+            "nodos": [
+                {
+                    "id": nodo.return_id(),
+                    "tipo": nodo.return_tipo(),
+                    "informacion": nodo.return_info(),
+                    "shape": nodo.shape  # asegúrate de que `shape` sea serializable
+                }
+                for nodo in self.adyacencia.keys()
+            ],
+            "adyacencia": {
+                str(nodo.return_id()): [hijo.return_id() for hijo in hijos]
+                for nodo, hijos in self.adyacencia.items()
+            }
+        }
+        with open(ruta, 'w') as f:
+            json.dump(data, f, indent=4)
+
+    @classmethod
+    def cargar_desde_archivo(cls, ruta):
+        from logic.node import Node  # asegúrate de que `Node` tenga los métodos `return_id`, etc.
+
+        with open(ruta, 'r') as f:
+            data = json.load(f)
+
+        nodos_dict = {}
+
+        # Crear nodos
+        for nodo_data in data["nodos"]:
+            nodo = Node(nodo_data["id"], nodo_data["tipo"], nodo_data["informacion"], nodo_data["shape"])
+            nodos_dict[nodo_data["id"]] = nodo
+
+        # Crear grafo
+        grafo = cls(nodos_dict[data["head"]], data["id"])
+
+        # Agregar vértices
+        for nodo in nodos_dict.values():
+            grafo.agregar_vertice_nodo(nodo)
+
+        # Agregar aristas
+        for origen_id, destinos in data["adyacencia"].items():
+            origen = nodos_dict[int(origen_id)]
+            for destino_id in destinos:
+                destino = nodos_dict[int(destino_id)]
+                grafo.adyacencia[origen].append(destino)
+
+        return grafo

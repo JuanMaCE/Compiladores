@@ -1,17 +1,12 @@
 import pygame
 import sys
 import math
+import json
 from logic.node import Node
 from logic.grafodirigdo import Grafodirigido
 
 pygame.init()
-WIDTH2, HEIGHT2 = 400, 300
-FONT = pygame.font.SysFont(None, 24)
-instrucciones_texto = "Presione 1 2 3 4 5 6"
-salida_texto = "Resultado al presionar enter"
-GAP2 = 10
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
+
 WIDTH, HEIGHT = 1000, 700
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Editor de Diagrama de Flujo")
@@ -25,8 +20,7 @@ colors = {
     "PROCESO": (70, 130, 180),
     "DECISIÓN": (50, 200, 120),
     "FIN": (220, 70, 70),
-    "CallMeBaby" : (220, 130, 70)
-
+    "CallMeBaby": (220, 130, 70)
 }
 
 shape_types = list(colors.keys())
@@ -42,6 +36,20 @@ class Shape:
         self.height = 60
         self.selected = False
         self.id = id
+        self.graph = 0
+        self.shape_tipo = 0
+        if self.tipo == "ENTRADA":
+            self.shape_tipo = 1
+        elif self.tipo == "SALIDA":
+            self.shape_tipo = 2
+        elif self.tipo == "PROCESO":
+            self.shape_tipo = 3
+        elif self.tipo == "DECISIÓN":
+            self.shape_tipo = 4
+        elif self.tipo == "FIN":
+            self.shape_tipo = 5
+        elif self.tipo == "CallMeBaby":
+            self.shape_tipo = 6
 
     def rect(self):
         return pygame.Rect(self.x, self.y, self.width, self.height)
@@ -67,22 +75,54 @@ class Shape:
             pygame.draw.polygon(surface, color, points)
             pygame.draw.polygon(surface, (0, 0, 0), points, 2)
         elif self.tipo == "SALIDA":
-            points = [(r.left, r.top + 20), (r.right - 20, r.top), (r.right, r.centery), (r.right - 20, r.bottom),(r.left, r.bottom)]
+            points = [(r.left, r.top), (r.right - 30, r.top), (r.right, r.bottom), (r.left + 30, r.bottom)]
             pygame.draw.polygon(surface, color, points)
             pygame.draw.polygon(surface, (0, 0, 0), points, 2)
         else:
-            pygame.draw.rect(surface, color, r, border_radius=10)
-            pygame.draw.rect(surface, (0, 0, 0), r, 2, border_radius=10)
+            pygame.draw.ellipse(surface, color, r) if self.tipo in ["INICIO", "FIN"] else pygame.draw.rect(surface,
+                                                                                                           color, r,
+                                                                                                           border_radius=10)
+            pygame.draw.ellipse(surface, (0, 0, 0), r, 2) if self.tipo in ["INICIO", "FIN"] else pygame.draw.rect(
+                surface, (0, 0, 0), r, 2, border_radius=10)
 
         text_surface = font.render(self.texto, True, (0, 0, 0))
         text_rect = text_surface.get_rect(center=r.center)
         surface.blit(text_surface, text_rect)
 
+    def set_graph(self, valor: int):
+        self.graph = valor
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'tipo': self.tipo,
+            'x': self.x,
+            'y': self.y,
+            'texto': self.texto,
+            'graph': self.graph,
+            'shape_tipo': self.shape_tipo
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        shape = cls(data['id'], data['tipo'], data['x'], data['y'], data['texto'])
+        shape.graph = data['graph']
+        shape.shape_tipo = data['shape_tipo']
+        return shape
+
 
 class Connection:
-    def __init__(self, a: Shape, b: Shape):
-        self.a = a
-        self.b = b
+    def __init__(self, inicio: Shape, fin: Shape):
+        self.a = inicio
+        self.b = fin
+        indice = self.b.tipo
+
+        if inicio.graph != 0:
+            functions[0].eliminar_por_id(self.b.id)
+            functions[inicio.graph].agregar_vertice(self.b.id, self.b.shape_tipo, self.b.return_texto(), self.b)
+            functions[inicio.graph].agregar_arista(inicio.id, fin.id)
+        else:
+            functions[inicio.graph].agregar_arista(inicio.id, fin.id)
 
     def draw(self, surface):
         ax, ay = self.a.center()
@@ -102,37 +142,129 @@ class Connection:
         ]
         pygame.draw.polygon(surface, (0, 0, 0), points)
 
+    def to_dict(self):
+        return {
+            'inicio_id': self.a.id,
+            'fin_id': self.b.id
+        }
+
+
+def save_to_file(filename='diagrama.json'):
+    data = {
+        'shapes': [shape.to_dict() for shape in shapes],
+        'connections': [conn.to_dict() for conn in connections],
+        'next_id': id + 1,
+        'next_graph_id': id_graph + 1,
+        'functions': [func.to_dict() for func in functions]
+    }
+
+    with open(filename, 'w') as f:
+        json.dump(data, f, indent=2)
+
+    print(f"Diagrama guardado en {filename}")
+
+
+def load_from_file(filename='diagrama.json'):
+    global shapes, connections, id, id_graph, functions
+
+    try:
+        with open(filename, 'r') as f:
+            data = json.load(f)
+
+        # Resetear todo
+        shapes = []
+        connections = []
+        functions = []
+        id = data['next_id'] - 1
+        id_graph = data['next_graph_id'] - 1
+
+        # Recrear shapes
+        id_to_shape = {}
+        for shape_data in data['shapes']:
+            shape = Shape.from_dict(shape_data)
+            shapes.append(shape)
+            id_to_shape[shape.id] = shape
+
+        # Recrear conexiones
+        for conn_data in data['connections']:
+            inicio = id_to_shape[conn_data['inicio_id']]
+            fin = id_to_shape[conn_data['fin_id']]
+            connections.append(Connection(inicio, fin))
+
+        # Recrear funciones (grafos)
+        for func_data in data['functions']:
+            grafo = Grafodirigido.from_dict(func_data, id_to_shape)
+            functions.append(grafo)
+
+        print(f"Diagrama cargado desde {filename}")
+        return True
+    except Exception as e:
+        print(f"Error al cargar el archivo: {e}")
+        return False
+
+
+# Necesitarás implementar to_dict() y from_dict() en tus clases Node y Grafodirigido
+# Aquí hay un ejemplo de cómo podrían verse:
+
+# En la clase Node:
+"""
+def to_dict(self):
+    return {
+        'id': self.id,
+        'tipo': self.tipo,
+        'info': self.info,
+        'shape_id': self.shape.id if self.shape else None
+    }
+
+@classmethod
+def from_dict(cls, data, id_to_shape):
+    shape = id_to_shape.get(data['shape_id'])
+    return cls(data['id'], data['tipo'], data['info'], shape)
+"""
+
+# En la clase Grafodirigido:
+"""
+def to_dict(self):
+    return {
+        'id': self.id,
+        'nodos': [nodo.to_dict() for nodo in self.lista_vertices],
+        'aristas': [(a, b) for a, b in self.lista_aristas]
+    }
+
+@classmethod
+def from_dict(cls, data, id_to_shape):
+    # Crear el grafo con el primer nodo
+    first_node_data = data['nodos'][0]
+    first_node = Node.from_dict(first_node_data, id_to_shape)
+    grafo = cls(first_node, data['id'])
+
+    # Añadir el resto de nodos
+    for node_data in data['nodos'][1:]:
+        node = Node.from_dict(node_data, id_to_shape)
+        grafo.agregar_vertice(node.id, node.tipo, node.info, node.shape)
+
+    # Añadir aristas
+    for a, b in data['aristas']:
+        grafo.agregar_arista(a, b)
+
+    return grafo
+"""
 
 shapes = []
 connections = []
 selected_shape = None
 drag_offset = (0, 0)
 connecting_from = None
-
+functions = []
 id = 0
+id_graph = 0
 shape_beggin = shape_types[0]
 create_shape_beggin = Shape(0, shape_beggin, 50, 50)
 shapes.append(create_shape_beggin)
 node_inicio = Node(id, 0, "INICIO", create_shape_beggin)
-grafo = Grafodirigido(node_inicio) # -> aqui se crea el grafo
-
-
-def draw_left():
-    pygame.draw.rect(screen, WHITE, (0, 0, WIDTH2, HEIGHT2))
-    text_surface = FONT.render(instrucciones_texto, True, BLACK)
-    screen.blit(text_surface, (20, HEIGHT // 2))
-
-
-# Función 2: Dibujar ventana derecha
-def draw_right(text):
-    pygame.draw.rect(screen, WHITE, (WIDTH + GAP2, 0, WIDTH2, HEIGHT2))
-    text_surface = FONT.render(text, True, BLACK)
-    screen.blit(text_surface, (WIDTH + GAP2 + 20, HEIGHT // 2))
-
-
-def update_text(new_text):
-    global salida_texto
-    salida_texto = new_text
+def_main = Grafodirigido(node_inicio, id_graph)  # -> aqui se crea el grafo
+functions.append(def_main)
+create_shape_beggin.set_graph(def_main.id)
 
 
 def edit_text(shape: Shape):
@@ -141,8 +273,21 @@ def edit_text(shape: Shape):
     root = tk.Tk()
     root.withdraw()
     new_text = simpledialog.askstring("Editar Texto", "Nuevo contenido:", initialvalue=shape.texto)
-    nodo = grafo.obtener_nodo_por_id(shape.id)
-    nodo.node_change_info(new_text)
+
+    try:
+        id_of_function = 0
+        for function in functions:
+            lista = function.devolver_list_of_vertices()
+            for nodo in lista:
+                if shape.id == nodo.return_id():
+                    id_of_function = function.id
+                    break
+
+        nodo = functions[id_of_function].obtener_nodo_por_id(shape.id)
+        if nodo is not None:
+            nodo.node_change_info(new_text)
+    except Exception as e:
+        print(f"Error al editar el nodo: {e}")
 
     if new_text:
         shape.texto = new_text
@@ -151,8 +296,6 @@ def edit_text(shape: Shape):
 
 running = True
 while running:
-    draw_left()
-    draw_right(salida_texto)
     screen.fill((245, 245, 245))
 
     for event in pygame.event.get():
@@ -161,16 +304,6 @@ while running:
 
         elif event.type == pygame.KEYDOWN:
             # generacion de figuras
-            if event.key == pygame.K_RETURN:
-                grafo.generate_code_C()
-                # aqui van las funciones ROGER
-                # code_asm = grafo.generate_code_asm()
-                # code_py = grafo.generate_code_python()
-                # EN CONSOLA AUN
-                print("Código C:\n", grafo.code_c)
-                update_text(grafo.code_c)
-                # print("Código ASM:\n", code_asm)
-                # print("Código Python:\n", code_py)
             if pygame.K_1 <= event.key <= pygame.K_7:
                 id += 1
                 shape_beggin = shape_types[event.key - pygame.K_1]
@@ -178,27 +311,36 @@ while running:
                 shapes.append(create_shape_beggin)
                 indice = event.key - pygame.K_1
                 if indice == 0:
-                    grafo.agregar_vertice(id, indice, "INICIO", create_shape_beggin)
-                elif indice == 1:
-                    grafo.agregar_vertice(id, indice, "ENTRADA", create_shape_beggin)
+                    id_graph += 1
+                    node_inicio = Node(id, 0, "INICIO", create_shape_beggin)
+                    new_grafo = Grafodirigido(node_inicio, id_graph)
+                    functions.append(new_grafo)
+                    create_shape_beggin.set_graph(id_graph)
+
+                if indice == 1:
+                    def_main.agregar_vertice(id, indice, "ENTRADA", create_shape_beggin)
                 elif indice == 2:
-                    grafo.agregar_vertice(id, indice, "Salida", create_shape_beggin)
+                    def_main.agregar_vertice(id, indice, "Salida", create_shape_beggin)
                 elif indice == 3:
-                    grafo.agregar_vertice(id, indice, "PROCESO", create_shape_beggin)
+                    def_main.agregar_vertice(id, indice, "PROCESO", create_shape_beggin)
                 elif indice == 4:
-                    grafo.agregar_vertice(id, indice, "condicion", create_shape_beggin)
+                    def_main.agregar_vertice(id, indice, "condicion", create_shape_beggin)
                 elif indice == 5:
-                    grafo.agregar_vertice(id, indice, "final", create_shape_beggin)
+                    def_main.agregar_vertice(id, indice, "final", create_shape_beggin)
                 elif indice == 6:
-                    grafo.agregar_vertice(id, indice, "funcion", create_shape_beggin)
-
-
+                    def_main.agregar_vertice(id, indice, "funcion", create_shape_beggin)
             elif event.key == pygame.K_DELETE:
                 for s in shapes:
                     if s.selected:
                         connections[:] = [c for c in connections if c.a != s and c.b != s]
                         shapes.remove(s)
                         break
+            # Guardar con Ctrl+S
+            elif event.key == pygame.K_s and pygame.key.get_mods() & pygame.KMOD_CTRL:
+                save_to_file()
+            # Cargar con Ctrl+V
+            elif event.key == pygame.K_v and pygame.key.get_mods() & pygame.KMOD_CTRL:
+                load_from_file()
 
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:  # click izquierdo
@@ -211,10 +353,10 @@ while running:
                         drag_offset = (s.x - event.pos[0], s.y - event.pos[1])
                         if pygame.key.get_mods() & pygame.KMOD_CTRL:
                             if connecting_from and connecting_from != s:
+                                s.set_graph(connecting_from.graph)
                                 arista = Connection(connecting_from, s)
                                 connections.append(arista)
                                 connecting_from = None
-                                grafo.agregar_arista(arista.a.id, arista.b.id)
                             else:
                                 connecting_from = s
                         break
@@ -226,7 +368,6 @@ while running:
                         selected_shape = s
                         s.selected = True
                         edit_text(s)
-
                         break
 
         elif event.type == pygame.MOUSEBUTTONUP:
@@ -249,5 +390,15 @@ while running:
     pygame.display.flip()
     clock.tick(60)
 
-pygame.quit()
-sys.exit()
+print("Grafos:")
+print("  ")
+print("  ")
+print("  ")
+
+for i in range(len(functions)):
+    if i != 0:
+        functions[i].generate_code_C()
+        print(functions[i].code_c)
+
+def_main.generate_code_C()
+print(def_main.code_c)
