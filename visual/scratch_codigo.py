@@ -1,5 +1,5 @@
-from grafodirigdo import Grafodirigido
-from node import Node
+from logic.grafodirigdo import Grafodirigido
+from logic.node import Node
 
 
 
