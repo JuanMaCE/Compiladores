@@ -179,11 +179,16 @@ class WorkShape:
 
         # If it's an "inicio" node, create a new graph
         if self.tipo == "inicio":
+            print(self.id)
             self.graph_id = id_graph
             self.node = Node(self.id, self.shape_tipo, self.texto, self)
             new_graph = Grafodirigido(self.node, id_graph)
             functions.append(new_graph)
             id_graph += 1
+            print(self.id, self.shape_tipo, self.texto)
+            print(tipo, "y etsoy agregando eh ---------------------------->")
+            for function in functions:
+                print(function.id, function.head.id, "shi")
         else:
             # Add to main graph by default
             if functions:
@@ -281,6 +286,7 @@ class WorkShape:
 
     def set_id(self, new_id: int):
         self.id = new_id
+        self.node.change_id(new_id)
 
     def set_graph_id(self, new_id: int):
         self.graph_id = new_id
@@ -312,13 +318,22 @@ class Connection:
             if start_shape.graph_id != end_shape.graph_id and start_shape.graph_id != 0:
                 # Remove from current graph
                 for graph in functions:
+                    print("   ")
+                    print("   ")
+                    print(graph.id, "mostrando")
+                    print(graph.mostrar())
+                    print("   ")
                     if graph.id == end_shape.graph_id:
-                        graph.eliminar_por_id(end_shape.id)
+                        print(end_shape.graph_id)
+                        eliminado = graph.eliminar_por_id(end_shape.id)
                         break
 
 
                 for graph in functions:
+                    print("MostRARNO GRPAH")
+                    print(graph.mostrar())
                     if graph.id == start_shape.graph_id:
+                        print("agregando normal")
                         graph.agregar_vertice(end_shape.id, end_shape.shape_tipo, end_shape.texto, end_shape)
                         graph.agregar_arista(start_shape.id, end_shape.id)
                         end_shape.graph_id = start_shape.graph_id
@@ -326,7 +341,14 @@ class Connection:
             else:
                 # Add regular connection
                 for graph in functions:
+                    print("MostRARNO GRPAH")
+                    print(graph.mostrar())
+                    print(" ")
+                    print(" ")
+                    print(" ")
+
                     if graph.id == start_shape.graph_id:
+                        print("estoy agregandome aqui")
                         graph.agregar_arista(start_shape.id, end_shape.id)
                         break
 
@@ -382,7 +404,6 @@ def save_graph():
 
         with open(file_path, 'w') as f:
             for graph in functions:
-                print(graph.id)
                 # Guardar nodos
                 f.write("NODOS:\n")
                 for nodo in graph.adyacencia:
@@ -391,7 +412,7 @@ def save_graph():
                     texto = shape.texto if shape else nodo.informacion
                     x = shape.x if shape else 0
                     y = shape.y if shape else 0
-                    f.write(f"{nodo.id}|{tipo_str}|{texto}|{x}|{y}|{graph.id}\n")
+                    f.write(f"{nodo.id}|{tipo_str}|{texto}|{x}|{y}|{graph.id}|\n")
                 f.write("ARISTAS:\n")
                 f.write(graph.mostrar())
 
@@ -418,7 +439,6 @@ def load_graph():
     )
 
     if not file_path:  # Si el usuario cancela
-        print("No se seleccionó ningún archivo.")
         return None
 
     try:
@@ -427,6 +447,10 @@ def load_graph():
             nodos_arista = False
             nodos_a_cargar = []
             reset_application()
+            node_beggin = None
+            node_final = None
+            flag_node_beggin = True
+
             while True:
                 linea = file.readline()
                 if not linea:
@@ -435,35 +459,30 @@ def load_graph():
                 # aqui se crean las aristas
                 if linea.strip() != "NODOS:" and nodos_arista == True and nodos_flag == False:
                     flag_node_beggin = True
-
-                    node_beggin = None
-                    node_final = None
                     linea_sin_espacios = linea.strip()
-                    print(linea.strip() + "     esta es la linea")
+                    print(linea_sin_espacios, "-------------> linea sin espacios")
                     for i in range(len(linea_sin_espacios)):
                         caracter = linea_sin_espacios[i]
                         nodo_buscado: Node
-                        if caracter != "|" and caracter != "," and caracter != "\n":
+                        if len(linea_sin_espacios) == 2:
+                            node_beggin = None
+                            node_final = None
+                            break
+                        elif caracter != "|" and caracter != "," and caracter != "\n" and len(linea_sin_espacios) > 2:
                             for j in range(len(nodos_a_cargar)):
+
                                 if nodos_a_cargar[j].id == int(caracter) and flag_node_beggin:
+                                    node_beggin = None
                                     node_beggin = nodos_a_cargar[j]
+
+
                                     flag_node_beggin = False
                                     break
                                 elif nodos_a_cargar[j].id == int(caracter) and flag_node_beggin == False:
-                                    print("conecto el final")
                                     node_final = nodos_a_cargar[j]
-                                    print("infomracion nodo inicio")
-                                    print(node_beggin.id, node_beggin.texto, node_beggin.tipo, node_beggin.graph_id, node_beggin.shape_tipo)
-                                    print("inforaciomcion nodo final")
-                                    print(node_final.id, node_final.texto, node_final.tipo, node_final.graph_id, node_final.shape_tipo)
-                                    print(node_beggin.id, node_final.id, " este es el ingreso de los ndos")
+                                    print(node_beggin.graph_id, node_final.graph_id)
                                     a = Connection(node_beggin, node_final)
-                                    connections.append(a)
-                                    flag_node_beggin = False
-                                    print(" ")
-                                    print(" ")
-                                    print(" ")
-                                    print(" ")
+                                    print(connections.append(a), "guarde esto")
 
                                     break
 
@@ -477,20 +496,21 @@ def load_graph():
                 if linea.strip() != "NODOS:" and nodos_flag == True and nodos_arista == False:
                     palabra = 0
                     txt_palabra = ""
-                    id_nodo = 0
+                    id_nodo_now = 0
                     tipo_str_nodo = ""
                     texto_nodo = ""
                     posicion_x = 0
                     posicion_y = 0
                     graph_id_figure = 0
+                    linea_sin_espacios = linea.strip()
 
                     for i in range(len(linea)):
                         letra = linea[i]
                         if letra != "|":
                             txt_palabra += letra
-                        if letra == "|":
+                        elif letra == "|":
                             if palabra == 0:
-                                id_nodo = int(txt_palabra)
+                                id_nodo_now = int(txt_palabra)
                             elif palabra == 1:
                                 tipo_str_nodo = txt_palabra
                             elif palabra == 2:
@@ -501,24 +521,38 @@ def load_graph():
                                 posicion_y = int(txt_palabra)
                             elif palabra == 5:
                                 graph_id_figure = int(txt_palabra)
+
                             palabra += 1
                             txt_palabra = ""
-                            if id_nodo > id_counter:
-                                id_counter = id_nodo
-
-
+                            if id_nodo_now > id_counter:
+                                id_counter = id_nodo_now
+                    for x in range(10):
+                        print(" ")
+                    print("aqui inincio a ageregar", id_nodo_now)
                     create_sshapes = WorkShape(tipo_str_nodo, posicion_x, posicion_y)
-                    create_sshapes.set_id(id_nodo)
+                    create_sshapes.set_id(id_nodo_now)
+
+                    print(create_sshapes.id, create_sshapes.tipo,create_sshapes.texto, create_sshapes.graph_id)
+
+
+
+
 
                     create_sshapes.set_new_text(texto_nodo)
-                    create_sshapes.set_graph_id(graph_id_figure)
+
+
 
                     work_shapes.append(create_sshapes)
                     nodos_a_cargar.append(create_sshapes)
 
                 elif linea.strip() == "NODOS:":
+                    node_beggin = None
+                    node_final = None
                     nodos_flag = True
                     nodos_arista = False
+                    flag_node_beggin = True
+                    nodos_a_cargar = []
+
         id_counter += 1
         print("Lectura completada.")
     except Exception as e:
@@ -817,6 +851,9 @@ while running:
 
     pygame.display.flip()
     clock.tick(60)
+
+for function in functions:
+    print(function.id, function.head.id)
 
 pygame.quit()
 sys.exit()
