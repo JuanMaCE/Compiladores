@@ -179,16 +179,12 @@ class WorkShape:
 
         # If it's an "inicio" node, create a new graph
         if self.tipo == "inicio":
-            print(self.id)
             self.graph_id = id_graph
             self.node = Node(self.id, self.shape_tipo, self.texto, self)
             new_graph = Grafodirigido(self.node, id_graph)
             functions.append(new_graph)
             id_graph += 1
-            print(self.id, self.shape_tipo, self.texto)
-            print(tipo, "y etsoy agregando eh ---------------------------->")
-            for function in functions:
-                print(function.id, function.head.id, "shi")
+
         else:
             # Add to main graph by default
             if functions:
@@ -318,22 +314,13 @@ class Connection:
             if start_shape.graph_id != end_shape.graph_id and start_shape.graph_id != 0:
                 # Remove from current graph
                 for graph in functions:
-                    print("   ")
-                    print("   ")
-                    print(graph.id, "mostrando")
-                    print(graph.mostrar())
-                    print("   ")
                     if graph.id == end_shape.graph_id:
-                        print(end_shape.graph_id)
                         eliminado = graph.eliminar_por_id(end_shape.id)
                         break
 
 
                 for graph in functions:
-                    print("MostRARNO GRPAH")
-                    print(graph.mostrar())
                     if graph.id == start_shape.graph_id:
-                        print("agregando normal")
                         graph.agregar_vertice(end_shape.id, end_shape.shape_tipo, end_shape.texto, end_shape)
                         graph.agregar_arista(start_shape.id, end_shape.id)
                         end_shape.graph_id = start_shape.graph_id
@@ -341,14 +328,7 @@ class Connection:
             else:
                 # Add regular connection
                 for graph in functions:
-                    print("MostRARNO GRPAH")
-                    print(graph.mostrar())
-                    print(" ")
-                    print(" ")
-                    print(" ")
-
                     if graph.id == start_shape.graph_id:
-                        print("estoy agregandome aqui")
                         graph.agregar_arista(start_shape.id, end_shape.id)
                         break
 
@@ -460,7 +440,6 @@ def load_graph():
                 if linea.strip() != "NODOS:" and nodos_arista == True and nodos_flag == False:
                     flag_node_beggin = True
                     linea_sin_espacios = linea.strip()
-                    print(linea_sin_espacios, "-------------> linea sin espacios")
                     for i in range(len(linea_sin_espacios)):
                         caracter = linea_sin_espacios[i]
                         nodo_buscado: Node
@@ -480,9 +459,8 @@ def load_graph():
                                     break
                                 elif nodos_a_cargar[j].id == int(caracter) and flag_node_beggin == False:
                                     node_final = nodos_a_cargar[j]
-                                    print(node_beggin.graph_id, node_final.graph_id)
                                     a = Connection(node_beggin, node_final)
-                                    print(connections.append(a), "guarde esto")
+                                    connections.append(a)
 
                                     break
 
@@ -526,22 +504,9 @@ def load_graph():
                             txt_palabra = ""
                             if id_nodo_now > id_counter:
                                 id_counter = id_nodo_now
-                    for x in range(10):
-                        print(" ")
-                    print("aqui inincio a ageregar", id_nodo_now)
                     create_sshapes = WorkShape(tipo_str_nodo, posicion_x, posicion_y)
                     create_sshapes.set_id(id_nodo_now)
-
-                    print(create_sshapes.id, create_sshapes.tipo,create_sshapes.texto, create_sshapes.graph_id)
-
-
-
-
-
                     create_sshapes.set_new_text(texto_nodo)
-
-
-
                     work_shapes.append(create_sshapes)
                     nodos_a_cargar.append(create_sshapes)
 
@@ -570,9 +535,14 @@ def compilada():
     global texto_panel_derecho
     texto_panel_derecho = [" "]
 
-    for graph in functions:
-        graph.generate_code_C()
-        c_code += graph.code_c + "\n\n"
+
+
+    for i in range(len(functions)):
+        if i != 0:
+            functions[i].generate_code_C()
+            c_code += functions[i].code_c + "\n\n"
+    functions[0].generate_code_C()
+    c_code += functions[0].code_c + "\n\n"
 
         # These would be uncommented when implemented
         # graph.generate_code_python()
@@ -852,8 +822,7 @@ while running:
     pygame.display.flip()
     clock.tick(60)
 
-for function in functions:
-    print(function.id, function.head.id)
+
 
 pygame.quit()
 sys.exit()
