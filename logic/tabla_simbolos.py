@@ -1,5 +1,5 @@
 class TablaSimbolos:
-    def _init_(self):
+    def __init__(self):
         self.variables = {} #Almacenar variables {nombre: tipo}
         self.funciones = {} #Almacenar funciones {nombre : tipo_retorno, [parametros]}
 
@@ -10,9 +10,9 @@ class TablaSimbolos:
 
     def obtener_tipo_variable(self, nombre):
         if nombre not in self.variables:
-            raise Exception(f"Error: variable {nombre} ya declarada")
-        return self.variables(nombre)
-    
+            raise Exception(f"Error: variable {nombre} no declarada")
+        return self.variables[nombre]
+
     def declarar_funcion(self, nombre, tipo_retorno, parametros):
         if nombre in self.funciones:
             raise Exception(f"Error: Funcion {nombre} ya declarada")
@@ -20,5 +20,5 @@ class TablaSimbolos:
 
     def obtener_info_funcion(self, nombre):
         if nombre not in self.funciones:
-            raise Exception(f"Error: Funcion {nombre} ya declarada")
-        return self.funciones(nombre)
+            raise Exception(f"Error: Funcion {nombre} no declarada")
+        return self.funciones[nombre]
