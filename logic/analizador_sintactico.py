@@ -1,9 +1,9 @@
 import re
-from AST import *
+from .AST import *
 
 # === Analisis Lexico ===
 token_patron = {
-    "KEYWORD": r'\b(if|else|while|switch|case|return|print|break|for|int|float|void|double|char|bool)\b',
+    "KEYWORD": r'\b(if|else|while|switch|case|return|printf|break|for|int|float|void|double|char|bool|scanf)\b',
     "BOOLEAN":r'\b(true|false)\b',
     "IDENTIFIER": r'\b[a-zA-Z_][a-zA-Z0-9_]*\b',
     "NUMBER": r'\b\d+(\.\d+)?\b',
@@ -65,7 +65,8 @@ class Parser:
     def argumentos(self):
         argumentos = []
         while self.obtener_token_actual() and self.obtener_token_actual()[1] != ')':
-            argumentos.append(self.expresion_ing())
+            iz, op = self.expresion_ing()
+            argumentos.append(iz)
             if self.obtener_token_actual() and self.obtener_token_actual()[1] == ',':
                 self.coincidir('DELIMITER')
         return argumentos
@@ -79,7 +80,7 @@ class Parser:
         self.coincidir('DELIMITER')  # '{'
         cuerpo = self.cuerpo()
         self.coincidir('DELIMITER')  # '}'
-        return NodoFuncion(nombre_funcion[1], parametros, cuerpo)
+        return NodoFuncion(tipo_retorno, nombre_funcion[1], parametros, cuerpo)
 
     def parametros(self):
         parametros = []
@@ -97,7 +98,7 @@ class Parser:
 
         if self.obtener_token_actual() and self.obtener_token_actual()[1] == '=':
             self.coincidir('OPERATOR')
-            expresion = self.expresion_ing()
+            expresion, op = self.expresion_ing()
             nodo = NodoAsignacion(nombre, expresion)
         else:
             nodo = NodoDeclaracion(tipo[1], nombre[1])
@@ -105,17 +106,18 @@ class Parser:
         self.coincidir('DELIMITER')
         return nodo
 
-    def asignacion(self):
-        tipo = self.coincidir('KEYWORD')
+    def asignacion(self, sihay=1):
+        if sihay == 1:
+            tipo = self.coincidir('KEYWORD')
         nombre = self.coincidir('IDENTIFIER')
         self.coincidir('OPERATOR')
-        expresion = self.expresion_ing()
+        expresion, op = self.expresion_ing()
         self.coincidir('DELIMITER')
         return NodoAsignacion(nombre, expresion)
 
     def retorno(self):
         self.coincidir('KEYWORD')
-        expresion = self.expresion_ing()
+        expresion, op = self.expresion_ing()
         self.coincidir('DELIMITER')
         return NodoRetorno(expresion)
 
@@ -135,10 +137,14 @@ class Parser:
                     instrucciones.append(self.bucle_while())
                 elif token_actual[1] == 'for':
                     instrucciones.append(self.bucle_for())
-                elif token_actual[1] == 'print':
+                elif token_actual[1] == 'scanf':
+                    instrucciones.append(self.scanf_llamada())
+                elif token_actual[1] == 'printf':
                     instrucciones.append(self.printf_llamada())
                 elif token_actual[1] == 'return':
                     instrucciones.append(self.retorno())
+                elif token_actual[1] == 'break':
+                    instrucciones.append(self.break_statement())
                 elif token_actual[1] in ['int', 'float', 'void', 'double', 'char', 'bool']:
                     instrucciones.append(self.declaracion())
                 else:
@@ -149,11 +155,20 @@ class Parser:
                 if siguiente_token and siguiente_token[1] == '(':
                     instrucciones.append(self.llamar_funcion())
                     self.coincidir('DELIMITER') # ';'
+                elif siguiente_token and siguiente_token[0] == 'OPERATOR':
+                    if siguiente_token[1]=='=':
+                        instrucciones.append(self.asignacion(0))
+                    else:
+                        var = self.obtener_token_actual()[1]
+                        self.coincidir('IDENTIFIER')
+                        incremento = self.operador_abreviado()
+                        instrucciones.append(NodoIncremento(var, incremento))
                 else:
                     instrucciones.append(self.asignacion())
 
             elif token_actual[0] in ['NUMBER', 'STRING']:
-                instrucciones.append(self.expresion_ing())
+                iz, op = self.expresion_ing()
+                instrucciones.append(iz)
                 self.coincidir('DELIMITER')
 
             else:
@@ -163,20 +178,25 @@ class Parser:
 
     def expresion_ing(self):
         izquierda = self.termino()
+        
         if isinstance(izquierda, NodoIdentificador) and (self.obtener_token_actual()[1] == '('):
             llamada = izquierda.nombre
             self.coincidir('DELIMITER') # (
             argumentos = self.argumentos()
             self.coincidir('DELIMITER') # )
             izquierda = NodoLlamarFuncion(llamada, argumentos)
-        
+
+        primerop = self.obtener_token_actual()
+
         while self.obtener_token_actual() and self.obtener_token_actual()[0] == 'OPERATOR':
-            operador = self.coincidir('OPERATOR')
+            operador = self.obtener_token_actual()
+            self.coincidir('OPERATOR')
             if self.obtener_token_actual() and self.obtener_token_actual()[0] == 'OPERATOR':
                 break
             derecha = self.termino()
             izquierda = NodoOperacion(izquierda, operador[1], derecha)
-        return izquierda
+        
+        return izquierda, primerop
 
     def termino(self):
         token = self.obtener_token_actual()
@@ -235,61 +255,115 @@ class Parser:
             return NodoIf(condicion, cuerpo_if, cuerpo_else)
 
     def expresion_logica(self):
-        izquierda = self.expresion_ing()
+        izquierda, primerop = self.expresion_ing()
 
-        if isinstance(izquierda, NodoIdentificador) and (self.obtener_token_actual()[1] == '('):
-            llamada = izquierda.nombre
-            self.coincidir('DELIMITER') # (
-            argumentos = self.argumentos()
-            self.coincidir('DELIMITER') # )
-            return NodoLlamarFuncion(llamada, argumentos)
+        if isinstance(izquierda, NodoLlamarFuncion):
+            return izquierda
         
         if self.obtener_token_actual() and self.obtener_token_actual()[0] == 'OPERATOR':
-            operador = self.coincidir('OPERATOR')
-            
-            if operador[1] in ['=', '!', '<', '>']:
+            if primerop[1] in ['=', '!', '<', '>']:
                 if self.obtener_token_actual() and self.obtener_token_actual()[1] == '=':
-                    operador = (operador[0], operador[1] + self.coincidir('OPERATOR')[1])
+                    operador = self.obtener_token_actual()
+                    self.coincidir('OPERATOR')
             
-            derecha = self.expresion_ing()
-            return NodoOperacionLogica(izquierda, operador[1], derecha)
+            combinado = primerop[1]+operador[1]
+            derecha, primerop = self.expresion_ing()
+
+            return NodoOperacionLogica(izquierda, combinado, derecha)
         
         return izquierda
 
     def printf_llamada(self):
+        formato_a_tipo_python = {
+            '%d': int,
+            '%f': float,
+            '%lf': float,
+            '%c': str,
+            '%s': str
+        }
         self.coincidir('KEYWORD')
         self.coincidir('DELIMITER')
 
-        token_actual = self.obtener_token_actual()
-        if token_actual[0] == 'STRING' or token_actual[0] == 'IDENTIFIER':
-            self.coincidir(token_actual[0])
-        else:
-            raise SyntaxError(f"Error sintáctico: Se esperaba STRING o IDENTIFIER, pero se encontro {token_actual}")
+        argumentos = []
+        while self.obtener_token_actual() and self.obtener_token_actual()[1] != ')':
+            iz, op = self.expresion_ing()
+            argumentos.append(iz)
+            if self.obtener_token_actual() and self.obtener_token_actual()[1] == ',':
+                self.coincidir('DELIMITER')
 
-        while self.obtener_token_actual() and self.obtener_token_actual()[1] == ',':
-            self.coincidir('DELIMITER')
-            self.expresion()
+        formato_str = None
+        for argumento in argumentos:
+            if isinstance(argumento, NodoString):
+                formato_str = argumento.valor[1]
+                break
+
+        if not formato_str:
+            raise Exception("No se encontró cadena de formato en printf.")
+
+        formatos = re.findall(r'%(?:lf|d|f|c|s)', formato_str)
+
+        variables = [valor for valor in argumentos if isinstance(valor, NodoIdentificador)]
+
+        resultado = [(var, formato_a_tipo_python.get(fmt, None)) for fmt, var in zip(formatos, variables)]
 
         self.coincidir('DELIMITER')
+
+        return NodoPrintf(resultado, formato_str, argumentos)
+
+    def scanf_llamada(self):
+        formato_a_tipo_python = {
+            '%d': int,
+            '%f': float,
+            '%lf': float,
+            '%c': str,
+            '%s': str
+        }
+        self.coincidir('KEYWORD')
         self.coincidir('DELIMITER')
+
+        argumentos = []
+        while self.obtener_token_actual() and self.obtener_token_actual()[1] != ')':
+            iz, op = self.expresion_ing()
+            argumentos.append(iz)
+            if self.obtener_token_actual() and self.obtener_token_actual()[1] == ',':
+                self.coincidir('DELIMITER')
+
+        for argumento in argumentos:
+            if isinstance(argumento, NodoString):
+                tupla = argumento.valor
+                formato_str = tupla[1]
+                break
+
+        formatos = formato_str.strip('"').split()
+
+        variables = [valor.nombre for valor in argumentos if isinstance(valor, NodoIdentificador)]
+
+        resultado = [(var, formato_a_tipo_python.get(fmt, None)) for fmt, var in zip(formatos, variables)]
+
+        self.coincidir('DELIMITER')
+        return NodoScan(resultado, argumentos)
 
     def bucle_for(self):
         self.coincidir('KEYWORD')
         self.coincidir('DELIMITER')
 
-        self.declaracion()
+        inicializacion = self.declaracion()
 
-        self.expresion_logica() 
+        condicion = self.expresion_logica() 
         self.coincidir('DELIMITER')
 
-        self.operador_abreviado()
+        var = self.obtener_token_actual()[1]
+        self.coincidir('IDENTIFIER')
+        incremento = var+self.operador_abreviado()
 
         if self.obtener_token_actual()[0] == 'KEYWORD':
-            self.cuerpo()
+            cuerpo = self.cuerpo()
+            return NodoFor(inicializacion, condicion, incremento, cuerpo)
         else:
             self.coincidir('DELIMITER')
-            self.cuerpo()  
+            cuerpo = self.cuerpo()
             self.coincidir('DELIMITER')
+            return NodoFor(inicializacion, condicion, incremento, cuerpo)
 
     def return_statement(self):
         self.coincidir('KEYWORD')
@@ -297,24 +371,27 @@ class Parser:
         self.coincidir('DELIMITER')
 
     def break_statement(self):
-        self.coincidir('KEYWORD')
+        expresion = self.coincidir('KEYWORD')
         self.coincidir('DELIMITER')
+        return NodoBreak(expresion)
 
     def operador_abreviado(self):
-        self.coincidir('IDENTIFIER')
         operador_actual1 = self.obtener_token_actual()
         self.coincidir('OPERATOR')
         operador_actual2 = self.obtener_token_actual()
+        op_conjunto = operador_actual1[1]+operador_actual2[1]
         self.coincidir('OPERATOR')
         if operador_actual1[1] + operador_actual2[1] not in ['++','--', '+=', '-=', '*=', '/=']:
             raise SyntaxError(f'Error sintactico: se esperaba una declaracion valida, pero se encontro: {operador_actual1[1],operador_actual2[1]}')
         self.coincidir('DELIMITER')
+        return op_conjunto
 
     def bucle_while(self):
         self.coincidir('KEYWORD')
         self.coincidir('DELIMITER')
-        self.expresion_logica()
+        condicion = self.expresion_logica()
         self.coincidir('DELIMITER')
         self.coincidir('DELIMITER')
-        self.cuerpo()
+        cuerpo = self.cuerpo()
         self.coincidir('DELIMITER')
+        return NodoWhile(condicion, cuerpo)

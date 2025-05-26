@@ -16,7 +16,8 @@ class Node:
         self.shape = shape
         self.id_graph = None
 
-
+    def change_id(self, new_id: int):
+        self.id = new_id
 
     def return_tipo(self):
         return self.tipo

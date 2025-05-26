@@ -1,5 +1,4 @@
 from sys import flags
-
 import pygame
 import sys
 import os
@@ -11,6 +10,7 @@ import tkinter as tk
 from tkinter import filedialog
 from logic.node import Node
 from logic.grafodirigdo import Grafodirigido
+from logic.analizador import analizar_c
 
 pygame.init()
 WIDTH, HEIGHT = 1400, 800
@@ -47,7 +47,6 @@ SHAPE_COLORS = {
 id_counter = 0
 id_graph = 0
 functions = []  # Will store Grafodirigido instances
-
 
 def reset_application():
     global id_counter, id_graph, functions, work_shapes, connections, selected_shape, dragging_template, creating_connection, connection_start, active_text_edit
@@ -184,6 +183,7 @@ class WorkShape:
             new_graph = Grafodirigido(self.node, id_graph)
             functions.append(new_graph)
             id_graph += 1
+
         else:
             # Add to main graph by default
             if functions:
@@ -281,6 +281,7 @@ class WorkShape:
 
     def set_id(self, new_id: int):
         self.id = new_id
+        self.node.change_id(new_id)
 
     def set_graph_id(self, new_id: int):
         self.graph_id = new_id
@@ -313,7 +314,7 @@ class Connection:
                 # Remove from current graph
                 for graph in functions:
                     if graph.id == end_shape.graph_id:
-                        graph.eliminar_por_id(end_shape.id)
+                        eliminado = graph.eliminar_por_id(end_shape.id)
                         break
 
 
@@ -382,7 +383,6 @@ def save_graph():
 
         with open(file_path, 'w') as f:
             for graph in functions:
-                print(graph.id)
                 # Guardar nodos
                 f.write("NODOS:\n")
                 for nodo in graph.adyacencia:
@@ -391,7 +391,7 @@ def save_graph():
                     texto = shape.texto if shape else nodo.informacion
                     x = shape.x if shape else 0
                     y = shape.y if shape else 0
-                    f.write(f"{nodo.id}|{tipo_str}|{texto}|{x}|{y}|{graph.id}\n")
+                    f.write(f"{nodo.id}|{tipo_str}|{texto}|{x}|{y}|{graph.id}|\n")
                 f.write("ARISTAS:\n")
                 f.write(graph.mostrar())
 
@@ -418,7 +418,6 @@ def load_graph():
     )
 
     if not file_path:  # Si el usuario cancela
-        print("No se seleccionó ningún archivo.")
         return None
 
     try:
@@ -427,6 +426,10 @@ def load_graph():
             nodos_arista = False
             nodos_a_cargar = []
             reset_application()
+            node_beggin = None
+            node_final = None
+            flag_node_beggin = True
+
             while True:
                 linea = file.readline()
                 if not linea:
@@ -435,37 +438,26 @@ def load_graph():
                 # aqui se crean las aristas
                 if linea.strip() != "NODOS:" and nodos_arista == True and nodos_flag == False:
                     flag_node_beggin = True
-
-                    node_beggin = None
-                    node_final = None
                     linea_sin_espacios = linea.strip()
-                    print(linea.strip() + "     esta es la linea")
+                    numero_str = ""
                     for i in range(len(linea_sin_espacios)):
                         caracter = linea_sin_espacios[i]
                         nodo_buscado: Node
                         if caracter != "|" and caracter != "," and caracter != "\n":
+                            numero_str += caracter
+
+                        else:
                             for j in range(len(nodos_a_cargar)):
-                                if nodos_a_cargar[j].id == int(caracter) and flag_node_beggin:
+                                if nodos_a_cargar[j].id == int(numero_str) and flag_node_beggin:
+                                    node_beggin = None
                                     node_beggin = nodos_a_cargar[j]
                                     flag_node_beggin = False
-                                    break
-                                elif nodos_a_cargar[j].id == int(caracter) and flag_node_beggin == False:
-                                    print("conecto el final")
+                                elif nodos_a_cargar[j].id == int(numero_str) and flag_node_beggin == False:
                                     node_final = nodos_a_cargar[j]
-                                    print("infomracion nodo inicio")
-                                    print(node_beggin.id, node_beggin.texto, node_beggin.tipo, node_beggin.graph_id, node_beggin.shape_tipo)
-                                    print("inforaciomcion nodo final")
-                                    print(node_final.id, node_final.texto, node_final.tipo, node_final.graph_id, node_final.shape_tipo)
-                                    print(node_beggin.id, node_final.id, " este es el ingreso de los ndos")
                                     a = Connection(node_beggin, node_final)
                                     connections.append(a)
-                                    flag_node_beggin = False
-                                    print(" ")
-                                    print(" ")
-                                    print(" ")
-                                    print(" ")
+                            numero_str = ""
 
-                                    break
 
 
 
@@ -477,20 +469,21 @@ def load_graph():
                 if linea.strip() != "NODOS:" and nodos_flag == True and nodos_arista == False:
                     palabra = 0
                     txt_palabra = ""
-                    id_nodo = 0
+                    id_nodo_now = 0
                     tipo_str_nodo = ""
                     texto_nodo = ""
                     posicion_x = 0
                     posicion_y = 0
                     graph_id_figure = 0
+                    linea_sin_espacios = linea.strip()
 
                     for i in range(len(linea)):
                         letra = linea[i]
                         if letra != "|":
                             txt_palabra += letra
-                        if letra == "|":
+                        elif letra == "|":
                             if palabra == 0:
-                                id_nodo = int(txt_palabra)
+                                id_nodo_now = int(txt_palabra)
                             elif palabra == 1:
                                 tipo_str_nodo = txt_palabra
                             elif palabra == 2:
@@ -501,24 +494,27 @@ def load_graph():
                                 posicion_y = int(txt_palabra)
                             elif palabra == 5:
                                 graph_id_figure = int(txt_palabra)
+
                             palabra += 1
                             txt_palabra = ""
-                            if id_nodo > id_counter:
-                                id_counter = id_nodo
-
-
+                            if id_nodo_now > id_counter:
+                                id_counter = id_nodo_now
                     create_sshapes = WorkShape(tipo_str_nodo, posicion_x, posicion_y)
-                    create_sshapes.set_id(id_nodo)
-
+                    create_sshapes.set_id(id_nodo_now)
                     create_sshapes.set_new_text(texto_nodo)
-                    create_sshapes.set_graph_id(graph_id_figure)
+
 
                     work_shapes.append(create_sshapes)
                     nodos_a_cargar.append(create_sshapes)
 
                 elif linea.strip() == "NODOS:":
+                    node_beggin = None
+                    node_final = None
                     nodos_flag = True
                     nodos_arista = False
+                    flag_node_beggin = True
+                    nodos_a_cargar = []
+
         id_counter += 1
         print("Lectura completada.")
     except Exception as e:
@@ -536,13 +532,16 @@ def compilada():
     global texto_panel_derecho
     texto_panel_derecho = [" "]
 
-    for graph in functions:
-        graph.generate_code_C()
-        c_code += graph.code_c + "\n\n"
 
-        # These would be uncommented when implemented
-        # graph.generate_code_python()
-        # py_code += graph.code_py + "\n\n"
+
+    for i in range(len(functions)):
+        if i != 0:
+            functions[i].generate_code_C()
+            c_code += functions[i].code_c + "\n\n"
+    functions[0].generate_code_C()
+    c_code += functions[0].code_c + "\n\n"
+
+    print(c_code)
 
         # graph.generate_code_asm()
         # asm_code += graph.code_asm + "\n\n"
@@ -551,7 +550,7 @@ def compilada():
     texto_panel_derecho = [
         c_code,
     ]
-
+    analizar_c(c_code)
     return texto_panel_derecho
 
 
@@ -817,6 +816,8 @@ while running:
 
     pygame.display.flip()
     clock.tick(60)
+
+
 
 pygame.quit()
 sys.exit()
