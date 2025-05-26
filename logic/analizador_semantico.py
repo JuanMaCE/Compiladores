@@ -7,8 +7,12 @@ class AnalizadorSemantico:
 
     def analizar(self, nodo):
         if isinstance(nodo, NodoAsignacion):
-            tipo_expr = self.analizar(nodo.expresion)
-            self.tabla_simbolos.declarar_variables(nodo.nombre[1], tipo_expr)
+            yaesta = self.visitar_NodoAsignacion(nodo)
+            if yaesta:
+                print('si')
+            else:
+                tipo_expr = self.analizar(nodo.expresion)
+                self.tabla_simbolos.declarar_variables(nodo.nombre[1], tipo_expr)
         elif isinstance(nodo, NodoDeclaracion):
             tipo = nodo.tipo
             nombre = nodo.nombre
@@ -60,7 +64,11 @@ class AnalizadorSemantico:
 
     def visitar_NodoAsignacion(self, nodo):
         tipo_expresion = self.analizar(nodo.expresion)
-        self.tabla_simbolos[nodo.nombre[1]] = {'tipo': tipo_expresion}
+        existe = self.tabla_simbolos.variables[nodo.nombre[1]] = {'tipo': tipo_expresion}
+        if existe:
+            return True
+        else:
+            return False
 
     def visitar_NodoOperacion(self, nodo):
         tipo_izquierda = self.analizar(nodo.izquierda)

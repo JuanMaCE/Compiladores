@@ -106,8 +106,9 @@ class Parser:
         self.coincidir('DELIMITER')
         return nodo
 
-    def asignacion(self):
-        tipo = self.coincidir('KEYWORD')
+    def asignacion(self, sihay=1):
+        if sihay == 1:
+            tipo = self.coincidir('KEYWORD')
         nombre = self.coincidir('IDENTIFIER')
         self.coincidir('OPERATOR')
         expresion, op = self.expresion_ing()
@@ -155,10 +156,13 @@ class Parser:
                     instrucciones.append(self.llamar_funcion())
                     self.coincidir('DELIMITER') # ';'
                 elif siguiente_token and siguiente_token[0] == 'OPERATOR':
-                    var = self.obtener_token_actual()[1]
-                    self.coincidir('IDENTIFIER')
-                    incremento = self.operador_abreviado()
-                    instrucciones.append(NodoIncremento(var, incremento))
+                    if siguiente_token[1]=='=':
+                        instrucciones.append(self.asignacion(0))
+                    else:
+                        var = self.obtener_token_actual()[1]
+                        self.coincidir('IDENTIFIER')
+                        incremento = self.operador_abreviado()
+                        instrucciones.append(NodoIncremento(var, incremento))
                 else:
                     instrucciones.append(self.asignacion())
 
