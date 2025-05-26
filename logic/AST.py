@@ -328,7 +328,10 @@ class NodoLlamarFuncion(NodoAST):
         
         for i, arg in enumerate(self.argumentos):
             if i < 6:
-                codigo.append(f"    push dword [{arg.nombre[1]}]")
+                if isinstance(arg, NodoNumero):
+                    codigo.append(f"    push dword {arg.valor[1]}")
+                else:
+                    codigo.append(f"    push dword [{arg.nombre[1]}]")
         
         func_name = self.nombre[1] if isinstance(self.nombre, tuple) else self.nombre
         codigo.append(f"    call {func_name}")
