@@ -1,29 +1,45 @@
 from AST import *
 from analizador_sintactico import *
 from analizador_semantico import *
+import subprocess
+import os
 
 codigo_fuente = """
-int sumar(int a, int b) {
+float sumar(float a, float b) {
     return a + b;
 }
 
 void main() {
-    int x;
-    int y;
+    float x;
+    float y;
     printf("Ingrese Primer Numero: ")
-    scanf("%d", &x);
+    scanf("%f", &x);
     printf("Ingrese Segundo Numero: ")
-    scanf("%d", &y);
-    int resultado = sumar(x, y);
-    printf("%d", &resultado);
+    scanf("%f", &y);
+    float resultado = sumar(x, y);
+    printf("%f", &resultado);
 
     return 0;
 }
 """
 
-def guardar_codigo_asm(nombre_archivo: str, codigo: str):
-    with open(nombre_archivo+'.asm', "w") as archivo:
-        archivo.write(codigo)
+def compile_and_run(asm_code):
+    """Compila y ejecuta el código ensamblador"""
+    try:
+        with open("temp.asm", "w") as f:
+            f.write(asm_code)
+        
+        subprocess.run(["nasm", "-f", "elf32", "temp.asm", "-o", "temp.o"])
+        subprocess.run(["gcc", "-m32", "-no-pie", "temp.o", "-o", "temp"])
+        subprocess.run(["./temp"])
+        
+        result = subprocess.run(["./temp"], capture_output=True, text=True)
+        return result.stdout
+        
+    except subprocess.CalledProcessError as e:
+        return f"Error de compilación: {e}"
+    except Exception as e:
+        return f"Error inesperado: {e}"
 
 def main():
     tokens = identificar_tokens(codigo_fuente)
@@ -32,6 +48,14 @@ def main():
         parser = Parser(tokens)
         arbol_ast = parser.parsear()
         print('Analisis sintactico completado sin errores')
+    except SyntaxError as e:
+        print(e)
+
+    try:
+        print('Iniciando analisis semantico...')
+        analizador_semantico = AnalizadorSemantico()
+        analizador_semantico.analizar(arbol_ast)
+        print('Analisis semantico completado sin errores')
     except SyntaxError as e:
         print(e)
 
@@ -50,16 +74,8 @@ def main():
         print("------------------------------")
         print("Código Ensamblador Generado:")
         print(codigo_asm)
-        guardar_codigo_asm('nombrearchivo', codigo_asm)
+        compile_and_run(codigo_asm)
         print("------------------------------")
-    except SyntaxError as e:
-        print(e)
-
-    try:
-        print('Iniciando analisis semantico...')
-        analizador_semantico = AnalizadorSemantico()
-        analizador_semantico.analizar(arbol_ast)
-        print('Analisis semantico completado sin errores')
     except SyntaxError as e:
         print(e)
 

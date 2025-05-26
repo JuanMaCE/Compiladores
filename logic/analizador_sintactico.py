@@ -154,6 +154,11 @@ class Parser:
                 if siguiente_token and siguiente_token[1] == '(':
                     instrucciones.append(self.llamar_funcion())
                     self.coincidir('DELIMITER') # ';'
+                elif siguiente_token and siguiente_token[0] == 'OPERATOR':
+                    var = self.obtener_token_actual()[1]
+                    self.coincidir('IDENTIFIER')
+                    incremento = self.operador_abreviado()
+                    instrucciones.append(NodoIncremento(var, incremento))
                 else:
                     instrucciones.append(self.asignacion())
 
@@ -332,7 +337,7 @@ class Parser:
         resultado = [(var, formato_a_tipo_python.get(fmt, None)) for fmt, var in zip(formatos, variables)]
 
         self.coincidir('DELIMITER')
-        return NodoScan(resultado)
+        return NodoScan(resultado, argumentos)
 
     def bucle_for(self):
         self.coincidir('KEYWORD')

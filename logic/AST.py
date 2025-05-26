@@ -1,4 +1,6 @@
 class NodoAST:
+    countermsg=1
+    hay_float = False
     def traducir(self):
         raise NotImplementedError("Metodo traducir() no implementado")
     def generar_codigo(self):
@@ -18,184 +20,37 @@ class NodoPrograma(NodoAST):
         
         codigo = [
             "; === Programa Generado ===",
+            "%include 'io.asm'",
+            "%include 'mathop.asm'",
+            "",
             "section .data",
             "    newline db 10, 0",
             "    true_str db 'True', 0",
-            "    false_str db 'False', 0",
-            "    float_fmt db '%f', 0",
-            "    num_buffer times 20 db 0",  
-            "    float_buffer times 32 db 0", 
-            "    read_buffer times 64 db 0",  
+            "    num_buffer times 20 db 0"
+        ]
+        i=1
+        for var in reversed(list(variables)):
+            if var.startswith('"') and var.endswith('"'):
+                if '%' not in var:
+                    codigo.append(f"    msg_{i} db {var}, 0")
+                    i+=1
+
+        codigo.extend([
             "",
             "section .bss"
-        ]
-        
+        ])
+
         for var in variables:
-            codigo.append(f"    {var} resd 1")
+            if var.startswith('"') and var.endswith('"'):
+                continue
+            else:
+                codigo.append(f"    {var} resd 1")
             
         codigo.extend([
             "",
             "section .text",
-            "    global _start",
-            "    extern sprintf",
-            "",
-            "; === Funciones de ayuda ===",
-            "strlen:",
-            "    push ebp",
-            "    mov ebp, esp",
-            "    mov eax, 0",
-            ".loop:",
-            "    cmp byte [ecx+eax], 0",
-            "    je .done",
-            "    inc eax",
-            "    jmp .loop",
-            ".done:",
-            "    mov esp, ebp",
-            "    pop ebp",
-            "    ret",
-            "",
-            "; Convierte entero a string",
-            "; Entrada: EAX = número a convertir, ECX = buffer donde guardarlo",
-            "; Salida: EAX = longitud del string resultante",
-            "int_to_string:",
-            "    push ebp",
-            "    mov ebp, esp",
-            "    push ebx",
-            "    push edi",
-            "    push esi",
-            "    ",
-            "    mov edi, ecx        ; Buffer de salida",
-            "    mov esi, eax        ; Guardar número original",
-            "    xor ecx, ecx        ; Contador de dígitos",
-            "    ",
-            "    ; Manejar el caso cero",
-            "    test eax, eax",
-            "    jnz .no_cero",
-            "    mov byte [edi], '0'",
-            "    inc edi",
-            "    mov eax, 1  ; Longitud = 1",
-            "    jmp .fin",
-            "    ",
-            ".no_cero:",
-            "    ; Manejar negativos",
-            "    cmp esi, 0",
-            "    jge .positivo",
-            "    neg esi",
-            "    mov byte [edi], '-'",
-            "    inc edi",
-            "    inc ecx  ; Contar el signo como un dígito",
-            "",
-            ".positivo:",
-            "    ; Convertir dígitos",
-            "    mov ebx, 10",
-            ".digito_loop:",
-            "    xor edx, edx",
-            "    mov eax, esi",
-            "    div ebx",
-            "    add dl, '0'",
-            "    push edx",
-            "    inc ecx",
-            "    mov esi, eax",
-            "    test eax, eax",
-            "    jnz .digito_loop",
-            "    ",
-            "    ; Sacar dígitos de la pila",
-            "    mov edx, ecx  ; Guardar longitud original",
-            ".pop_loop:",
-            "    pop eax",
-            "    mov [edi], al",
-            "    inc edi",
-            "    dec ecx",
-            "    jnz .pop_loop",
-            "",
-            "    mov byte [edi], 0   ; Terminador nulo",
-            "    mov eax, edx        ; Devolver longitud",
-            "",
-            ".fin:",
-            "    pop esi",
-            "    pop edi",
-            "    pop ebx",
-            "    mov esp, ebp",
-            "    pop ebp",
-            "    ret",
-            "",
-            "; Función de lectura mejorada (scan)",
-            "; Entrada: EDI = buffer para almacenar el valor leído",
-            "; Salida: EAX = valor numérico",
-            "read_int:",
-            "    push ebp",
-            "    mov ebp, esp",
-            "    push ebx",
-            "    push esi",
-            "    push edi",
-            "",
-            "    ; Leer entrada",
-            "    mov eax, 3",
-            "    mov ebx, 0",
-            "    mov ecx, read_buffer",
-            "    mov edx, 64",
-            "    int 0x80",
-            "",
-            "    ; Convertir string a número",
-            "    mov esi, read_buffer",
-            "    xor eax, eax",
-            "    xor ebx, ebx",
-            "    xor ecx, ecx",
-            "",
-            "    ; Verificar signo negativo",
-            "    mov cl, [esi]",
-            "    cmp cl, '-'",
-            "    jne .convert_loop",
-            "    inc esi",
-            "    mov ebx, 1  ; Marcar como negativo",
-            "",
-            ".convert_loop:",
-            "    mov cl, [esi]",
-            "    cmp cl, 10  ; Salto de línea",
-            "    je .convert_end",
-            "    cmp cl, 0  ; Fin de string",
-            "    je .convert_end",
-            "",
-            "    sub cl, '0'",
-            "    cmp cl, 9",
-            "    ja .next_char  ; Ignorar caracteres no numéricos",
-            "",
-            "    imul eax, 10",
-            "    add eax, ecx",
-            "",
-            ".next_char:",
-            "    inc esi",
-            "    jmp .convert_loop",
-            "",
-            ".convert_end:",
-            "    ; Aplicar signo si es negativo",
-            "    test ebx, ebx",
-            "    jz .done",
-            "    neg eax",
-            "",
-            ".done:",
-            "    ; Guardar resultado en la variable",
-            "    mov [edi], eax",
-            "",
-            "    pop edi",
-            "    pop esi",
-            "    pop ebx",
-            "    mov esp, ebp",
-            "    pop ebp",
-            "    ret",
-            "",
-            "_start:",
-            "    ; Inicialización",
-            "    mov ebp, esp",
-            "    and esp, -16  ; Alinear stack a 16 bytes para llamadas a funciones C",
-            "",
-            "    ; Llamar a main",
-            "    call main",
-            "",
-            "    ; Terminar programa",
-            "    mov eax, 1",
-            "    xor ebx, ebx",
-            "    int 0x80",
+            "    global main",
+            ""
         ])
         
         for funcion in self.funciones:
@@ -205,6 +60,8 @@ class NodoPrograma(NodoAST):
 
     def _collect_variables(self, node):
         variables = set()
+        if isinstance(node, NodoString):
+            variables.add(node.valor[1])
         if isinstance(node, (NodoIdentificador, NodoDeclaracion, NodoAsignacion)):
             if isinstance(node.nombre, str):
                 variables.add(node.nombre)
@@ -244,32 +101,35 @@ class NodoFuncion(NodoAST):
             "    mov ebp, esp",
         ]
         
-        local_vars = sum(1 for inst in self.cuerpo if isinstance(inst, NodoDeclaracion))
-        if local_vars > 0:
-            codigo.append(f"    sub esp, {4 * local_vars}")
-        
-        codigo.append("    push ebx")
-        codigo.append("    push esi")
-        codigo.append("    push edi")
-        
+        if self.nombre == 'main':
+            local_vars = sum(1 for inst in self.cuerpo if isinstance(inst, NodoDeclaracion))
+            if local_vars > 0:
+                codigo.append(f"    sub esp, {4 * local_vars}")
         for inst in self.cuerpo:
-            inst_code = inst.generar_codigo()
+            inst_code = ''
+            if self.tipo[1]=='float':
+                self.__class__.hay_float = True
+            if isinstance(inst, NodoRetorno):
+                inst_code = inst.generar_codigo(self.tipo[1])
+            elif isinstance(inst, NodoOperacion):
+                inst_code = inst.generar_codigo(self.tipo[1])
+            elif isinstance(inst, NodoAsignacion):
+                if self.__class__.hay_float:
+                    inst_code = inst.generar_codigo('float')
+                    self.__class__.hay_float = False
+                else:
+                    inst_code = inst.generar_codigo()
+            else:
+                inst_code = inst.generar_codigo()
             if inst_code:
                 codigo.append(inst_code)
         
         if self.nombre == "main":
-            codigo.append("    xor eax, eax  ; Retornar 0 por defecto si es main")
-        
-        codigo.append(f".return:")    
-            
-        codigo.extend([
-            "    pop edi",
-            "    pop esi",
-            "    pop ebx",
-            "    mov esp, ebp",
-            "    pop ebp",
-            "    ret"
-        ])
+            codigo.extend([
+                "    ; Terminar programa",
+                "    call exit_program"
+            ])
+            return "\n".join(codigo)
         
         return "\n".join(codigo)
 
@@ -279,7 +139,7 @@ class NodoParametro(NodoAST):
         self.nombre = nombre
         
     def traducir(self):
-        return f"{self.tipo} {self.nombre}"
+        return f"{self.nombre}: {self.tipo}"
     
     def generar_codigo(self):
         return f"; Parámetro: {self.tipo} {self.nombre}"
@@ -292,15 +152,11 @@ class NodoAsignacion(NodoAST):
     def traducir(self):
         return f"{self.nombre[1]} = {self.expresion.traducir()}"
     
-    def generar_codigo(self):
-        codigo = self.expresion.generar_codigo()
-        
-        if isinstance(self.nombre, tuple):
-            var_name = self.nombre[1]
-        else:
-            var_name = self.nombre
-            
-        return codigo + f"\n    mov [{var_name}], eax ; asignar a {var_name}"
+    def generar_codigo(self, tipo='int'):
+        var_name = self.nombre[1] if isinstance(self.nombre, tuple) else self.nombre
+        if tipo == 'float':
+            return f"{self.expresion.generar_codigo()}\n    fstp dword [{var_name}]"
+        return f"{self.expresion.generar_codigo()}\n    mov [{var_name}], eax  ; asignar a {var_name}"
 
 class NodoOperacion(NodoAST):
     def __init__(self, izquierda, operador, derecha):
@@ -311,26 +167,36 @@ class NodoOperacion(NodoAST):
     def traducir(self):
         return f"{self.izquierda.traducir()} {self.operador} {self.derecha.traducir()}"
 
-    def generar_codigo(self):
-        codigo = [
-            self.derecha.generar_codigo(),
-            "    push eax",
-            self.izquierda.generar_codigo()
-        ]
+    def generar_codigo(self, tipo='int'):
+        codigo = []
+        if tipo == 'float':
+            codigo.append(f"    call suma_floats")
+            return "\n".join(codigo)
+        if isinstance(self.izquierda, NodoIdentificador):
+            var_name = self.izquierda.nombre[1] if isinstance(self.izquierda.nombre, tuple) else self.izquierda.nombre
+            codigo.append(f"    mov eax, [ebp+8]")
+        else:
+            codigo.append(self.izquierda.generar_codigo())
+            codigo.append("    push eax")
         
-        codigo.append("    pop ebx  ; Valor derecho")
+        if isinstance(self.derecha, NodoIdentificador):
+            var_name = self.derecha.nombre[1] if isinstance(self.derecha.nombre, tuple) else self.derecha.nombre
+            codigo.append(f"")
+        else:
+            codigo.append(self.derecha.generar_codigo())
+            codigo.append("    mov ebx, eax")
+            codigo.append("    pop eax")
         
         if self.operador == '+':
-            codigo.append("    add eax, ebx")
+            codigo.append("    add eax, [ebp+12]")
         elif self.operador == '-':
-            codigo.append("    sub eax, ebx")
+            codigo.append("    sub eax, [ebp+12]")
         elif self.operador == '*':
-            codigo.append("    imul eax, ebx")
+            codigo.append("    imul eax, [ebp+12]")
         elif self.operador == '/':
             codigo.extend([
-                "    mov edx, 0",
-                "    cdq",
-                "    idiv ebx"
+                "    cdq           ; Extender EAX a EDX:EAX",
+                "    idiv ebx      ; Dividir EDX:EAX por EBX"
             ])
         
         return "\n".join(codigo)
@@ -345,31 +211,22 @@ class NodoOperacionLogica(NodoAST):
         return f"{self.izquierda.traducir()} {self.operador} {self.derecha.traducir()}"
     
     def generar_codigo(self):
-        label_id = abs(hash(self)) % 1000
-        
         codigo = [
             self.izquierda.generar_codigo(),
-            "    push eax",
-            self.derecha.generar_codigo(),
-            "    mov ecx, eax",  
-            "    pop eax",       
-            "    cmp eax, ecx"   
+            f"    cmp eax, {self.derecha.valor[1]}"
         ]
         
-        if self.operador == '==':
-            codigo.append("    sete al")
-        elif self.operador == '!=':
-            codigo.append("    setne al")
-        elif self.operador == '<':
-            codigo.append("    setl al")
-        elif self.operador == '<=':
-            codigo.append("    setle al")
-        elif self.operador == '>':
-            codigo.append("    setg al")
-        elif self.operador == '>=':
-            codigo.append("    setge al")
+        set_instructions = {
+            '==': "    sete al",
+            '!=': "    setne al",
+            '<': "    setl al",
+            '<=': "    setle al",
+            '>': "    setg al",
+            '>=': "    setge al"
+        }
         
-        codigo.append("    movzx eax, al  ; Extender al a 32 bits")
+        codigo.append(set_instructions[self.operador])
+        
         return "\n".join(codigo)
 
 class NodoRetorno(NodoAST):
@@ -379,12 +236,23 @@ class NodoRetorno(NodoAST):
     def traducir(self):
         return f"return {self.expresion.traducir()}"
     
-    def generar_codigo(self):
-        if self.expresion:
-            expr_code = self.expresion.generar_codigo()
-            return f"{expr_code}\n    jmp .return  ; Saltar a la etiqueta de retorno"
+    def generar_codigo(self, tipo='int'):
+        if isinstance(self.expresion, NodoNumero):
+            if self.expresion and self.expresion.valor[1] == '0':
+                return ''
+            if self.expresion:
+                expr_code = self.expresion.generar_codigo()
+                return f"{expr_code}\n    mov esp, ebp\n    pop ebp\n    ret  ; Saltar a la etiqueta de retorno"
+            else:
+                return "    xor eax, eax\n    ret  ; Saltar a la etiqueta de retorno con 0"
         else:
-            return "    xor eax, eax\n    jmp .return  ; Saltar a la etiqueta de retorno con 0"
+            if self.expresion:
+                expr_code = self.expresion.generar_codigo(tipo) if isinstance(self.expresion, NodoOperacion) else self.expresion.generar_codigo()
+                if tipo == 'float':
+                    return f"{expr_code}\n    pop ebp\n    ret  ; Saltar a la etiqueta de retorno"
+                return f"{expr_code}\n    mov esp, ebp\n    pop ebp\n    ret  ; Saltar a la etiqueta de retorno"
+            else:
+                return "    xor eax, eax\n    ret  ; Saltar a la etiqueta de retorno con 0"
 
 class NodoBreak(NodoAST):
     def __init__(self, expresion):
@@ -394,7 +262,7 @@ class NodoBreak(NodoAST):
         return f"\tbreak"
 
     def generar_codigo(self):
-        return "    jmp .nearest_loop_end ; break"
+        return "    jmp .nearest_loop_end  ; break (32 bits)"
 
 class NodoIdentificador(NodoAST):
     def __init__(self, nombre):
@@ -404,11 +272,8 @@ class NodoIdentificador(NodoAST):
         return self.nombre[1]
 
     def generar_codigo(self):
-        if isinstance(self.nombre, tuple):
-            var_name = self.nombre[1]
-        else:
-            var_name = self.nombre
-        return f"    mov eax, [{var_name}] ; cargar variable {var_name}"
+        var_name = self.nombre[1] if isinstance(self.nombre, tuple) else self.nombre
+        return f"    mov eax, [{var_name}]  ; cargar variable {var_name}"
 
 class NodoNumero(NodoAST):
     def __init__(self, valor):
@@ -418,11 +283,18 @@ class NodoNumero(NodoAST):
         return str(self.valor[1])
         
     def generar_codigo(self):
-        if isinstance(self.valor, tuple):
-            val = self.valor[1]
+        val = self.valor[1] if isinstance(self.valor, tuple) else self.valor
+        if '.' in str(val):
+            return f"""
+        push dword {val.split('.')[1]}  ; Parte decimal
+        push dword {val.split('.')[0]}  ; Parte entera
+        fild dword [esp]     ; Cargar parte entera
+        fild dword [esp+4]   ; Cargar parte decimal
+        faddp                ; Sumar (ST0 = valor)
+        add esp, 8           ; Limpiar stack
+        ; El float queda en ST0"""
         else:
-            val = self.valor
-        return f"    mov eax, {val} ; cargar constante {val}"
+            return f"    mov eax, {val}  ; cargar entero {val} (32 bits)"
 
 class NodoBooleano(NodoAST):
     def __init__(self, valor):
@@ -436,7 +308,10 @@ class NodoBooleano(NodoAST):
             val = self.valor[1].lower()
         else:
             val = str(self.valor).lower()
-        return f"    mov eax, {1 if val == 'true' else 0} ; cargar booleano {val}"
+        
+        return f"""
+        mov eax, {1 if val == 'true' else 0}  ; Cargar {val} en EAX (32 bits)
+        ; (1 = true, 0 = false)"""
 
 class NodoLlamarFuncion(NodoAST):
     def __init__(self, nombre, argumentos):
@@ -449,24 +324,17 @@ class NodoLlamarFuncion(NodoAST):
     
     def generar_codigo(self):
         codigo = []
+        param_registers = ['edi', 'esi', 'edx', 'ecx', 'e8', 'e9']
         
-        codigo.append("    push ebp  ; Guardar frame pointer")
+        for i, arg in enumerate(self.argumentos):
+            if i < 6:
+                codigo.append(f"    push dword [{arg.nombre[1]}]")
         
-        for arg in reversed(self.argumentos):
-            codigo.append(arg.generar_codigo())
-            codigo.append("    push eax")
-        
-        if isinstance(self.nombre, tuple):
-            func_name = self.nombre[1]
-        else:
-            func_name = self.nombre
-            
+        func_name = self.nombre[1] if isinstance(self.nombre, tuple) else self.nombre
         codigo.append(f"    call {func_name}")
         
-        if self.argumentos:
-            codigo.append(f"    add esp, {4 * len(self.argumentos)}")
+        codigo.append(f"    add esp, {4 * (len(self.argumentos))}  ; limpiar stack")
         
-        codigo.append("    pop ebp  ; Restaurar frame pointer")
         return "\n".join(codigo)
 
 class NodoString(NodoAST):
@@ -477,7 +345,7 @@ class NodoString(NodoAST):
         return self.valor[1]
         
     def generar_codigo(self):
-        return f'   mov eax, {self.valor[1]} ; cargar string'
+        return f''
 
 class NodoDeclaracion(NodoAST):
     def __init__(self, tipo, nombre):
@@ -521,15 +389,14 @@ class NodoIf(NodoAST):
         label_id = abs(hash(self)) % 1000
         
         codigo = [
-            "; === IF statement ===",
+            "; === IF statement (32 bits) ===",
             self.condicion.generar_codigo(),
             "    test eax, eax",
             f"    jz .else_{label_id}"
         ]
         
         for inst in self.cuerpo_if:
-            inst_code = inst.generar_codigo()
-            if inst_code:
+            if inst_code := inst.generar_codigo():
                 codigo.append(inst_code)
         
         if self.cuerpo_else:
@@ -537,8 +404,7 @@ class NodoIf(NodoAST):
             codigo.append(f".else_{label_id}:")
             
             for inst in self.cuerpo_else:
-                inst_code = inst.generar_codigo()
-                if inst_code:
+                if inst_code := inst.generar_codigo():
                     codigo.append(inst_code)
                     
             codigo.append(f".endif_{label_id}:")
@@ -560,23 +426,19 @@ class NodoWhile(NodoAST):
         label_id = abs(hash(self)) % 1000
         
         codigo = [
-            "; === WHILE loop ===",
-            f".while_start_{label_id}:"
+            f"; === WHILE loop (32 bits) ===",
+            f".while_start_{label_id}:",
+            self.condicion.generar_codigo(),
+            "    test al, al               ; Verificar AL",
+            f"    jz .while_end_{label_id} ; Saltar si es falso",
         ]
         
-        codigo.append(self.condicion.generar_codigo())
-        codigo.extend([
-            "    test eax, eax",
-            f"    jz .while_end_{label_id}"
-        ])
-        
         for inst in self.cuerpo:
-            inst_code = inst.generar_codigo()
-            if inst_code:
+            if inst_code := inst.generar_codigo():
                 codigo.append(inst_code)
         
         codigo.extend([
-            f"    jmp .while_start_{label_id}",
+            f"    jmp .while_start_{label_id} ; Repetir",
             f".while_end_{label_id}:"
         ])
         
@@ -607,7 +469,7 @@ class NodoFor(NodoAST):
         
         codigo.append(self.condicion.generar_codigo())
         codigo.extend([
-            "    test eax, eax",
+            "    test rax, rax",
             f"    jz .for_end_{label_id}"
         ])
         
@@ -620,17 +482,17 @@ class NodoFor(NodoAST):
             var = self.incremento.replace("++", "").strip()
             codigo.extend([
                 f"    ; Incremento {var}++",
-                f"    mov eax, [{var}]",
-                f"    inc eax",
-                f"    mov [{var}], eax"
+                f"    mov rax, [{var}]",
+                f"    inc rax",
+                f"    mov [{var}], rax"
             ])
         elif "--" in self.incremento:
             var = self.incremento.replace("--", "").strip()
             codigo.extend([
                 f"    ; Decremento {var}--",
-                f"    mov eax, [{var}]",
-                f"    dec eax",
-                f"    mov [{var}], eax"
+                f"    mov rax, [{var}]",
+                f"    dec rax",
+                f"    mov [{var}], rax"
             ])
         
         codigo.extend([
@@ -645,6 +507,7 @@ class NodoPrintf(NodoAST):
         self.argumentos = argumentos
         self.cadenaFormato = formato_str
         self.variables = verfTipo
+        self.i = 1
         
     def traducir(self):
         import re
@@ -673,78 +536,83 @@ class NodoPrintf(NodoAST):
         label_id = abs(hash(self)) % 10000
         
         for arg in self.variables:
-            codigo.append(arg.generar_codigo())
-            
-            if isinstance(arg, NodoNumero) and '.' not in arg.valor[1]:
-                codigo.extend([
-                    "; Imprimir entero",
-                    "    mov ecx, num_buffer",
-                    "    call int_to_string",
-                    "    mov edx, eax",      
-                    "    mov eax, 4",        
-                    "    mov ebx, 1",        
-                    "    mov ecx, num_buffer",
-                    "    int 0x80"
-                ])
+            if isinstance(arg, NodoIdentificador):
+                tip = 'str'
+                for v, tipo in self.argumentos:
+                    print(tipo)
+                    if isinstance(v, NodoIdentificador):
+                        if v.nombre[1] == arg.nombre[1]:
+                            tip = tipo.__name__
+                if tip == 'int':
+                    codigo.append(f"    push dword [{arg.nombre[1]}]\n    call print_int\n    add esp, 4")
+                elif tip == 'float':
+                    codigo.append(f"    sub esp, 8\n    fld dword [{arg.nombre[1]}]\n    fstp qword [esp]\n    call print_float\n    add esp, 8")
+                elif tip == 'bool':
+                    codigo.extend([
+                        "    ; Imprimir booleano",
+                        "    test eax, eax",
+                        f"    jz .print_false_{label_id}",
+                        "    mov ecx, true_str",
+                        "    mov edx, 4",
+                        f"    jmp .do_print_{label_id}",
+                        f".print_false_{label_id}:",
+                        "    mov ecx, false_str",
+                        "    mov edx, 5",
+                        f".do_print_{label_id}:",
+                        "    mov eax, 4",
+                        "    mov ebx, 1",
+                        "    int 0x80"
+                    ])
+                else:
+                    codigo.extend([
+                        "    ; Imprimir String",
+                        f"    push {arg.nombre[1]}",
+                        "    call print_string",
+                        "    add esp, 4"
+                    ])
+            elif isinstance(arg, NodoNumero) and '.' not in arg.valor[1]:
+                codigo.append(f"    push dword [{arg.valor[1]}]\n    call print_int\n    add esp, 4")
             elif isinstance(arg, NodoBooleano):
                 codigo.extend([
-                    "; Imprimir booleano",
+                    "    ; Imprimir booleano",
                     "    test eax, eax",
                     f"    jz .print_false_{label_id}",
                     "    mov ecx, true_str",
-                    "    mov edx, 4",   
+                    "    mov edx, 4",   # Longitud de 'True'
                     f"    jmp .do_print_{label_id}",
                     f".print_false_{label_id}:",
                     "    mov ecx, false_str",
-                    "    mov edx, 5",   
+                    "    mov edx, 5",   # Longitud de 'False'
                     f".do_print_{label_id}:",
-                    "    mov eax, 4",   
-                    "    mov ebx, 1",   
+                    "    mov eax, 4",   # syscall write
+                    "    mov ebx, 1",   # stdout
                     "    int 0x80"
                 ])
             elif isinstance(arg, NodoString):
-                codigo.extend([
-                    "; Imprimir string",
-                    "    mov ecx, eax",  
-                    "    call strlen",   
-                    "    mov edx, eax",  
-                    "    mov eax, 4",    
-                    "    mov ebx, 1",    
-                    "    ; ECX ya tiene la dirección del string",
-                    "    int 0x80"
-                ])
+                if '%' not in arg.valor[1]:
+                    codigo.extend([
+                            "    ; Imprimir String",
+                            f"    push msg_{self.__class__.countermsg}",
+                            "    call print_string",
+                            "    add esp, 4"
+                        ])
+                    self.__class__.countermsg+=1
             elif isinstance(arg, NodoNumero) and '.' in arg.valor[1]:
-                codigo.extend([
-                    "; Imprimir flotante (usando conversión)",
-                    "    sub esp, 8",          
-                    "    fstp qword [esp]",    
-                    "    push float_fmt",      
-                    "    push float_buffer",   
-                    "    call sprintf",        
-                    "    add esp, 16",         
-                    "    mov ecx, float_buffer",
-                    "    call strlen",         
-                    "    mov edx, eax",        
-                    "    mov eax, 4",          
-                    "    mov ebx, 1",          
-                    "    mov ecx, float_buffer",
-                    "    int 0x80"
-                ])
+                codigo.append(f"    sub esp, 8\n    fld dword [{arg.valor[1]}]\n    fstp qword [esp]\n    call print_float\n    add esp, 8")
                 
         codigo.extend([
-            "; Nueva línea",
-            "    mov eax, 4",     
-            "    mov ebx, 1",     
-            "    mov ecx, newline",
-            "    mov edx, 1",     
-            "    int 0x80"
+            "    ; Nueva línea",
+            "    push newline",
+            "    call print_string",
+            "    add esp, 4"
         ])
         
         return "\n".join(codigo)
 
 class NodoScan(NodoAST):
-    def __init__(self, argumentos):
+    def __init__(self, argumentos, verfTipo):
         self.argumentos = argumentos
+        self.variab = verfTipo
         
     def traducir(self):
         lineas = []
@@ -761,40 +629,51 @@ class NodoScan(NodoAST):
     def generar_codigo(self):
         codigo = []
         
-        for var, tipo in self.argumentos:
-            if isinstance(var, tuple):
-                var_name = var[1]
-            else:
-                var_name = var
-                
-            if tipo == 'int':
+        for var in self.variab:
+            if isinstance(var, NodoNumero) and '.' not in var.valor[1]:
                 codigo.extend([
-                    f"; Leer entero en {var_name}",
-                    f"    mov edi, {var_name}",
-                    "    call read_int"
+                    f"    ; Leer entero en {var.valor[1]}",
+                    "    call read_int",
+                    f"    mov [{var.valor[1]}], eax"
                 ])
-            elif tipo == 'float':
+            elif isinstance(var, NodoNumero) and '.' in var.valor[1]:
                 codigo.extend([
-                    f"; Leer flotante en {var_name} (implementación básica)",
-                    "    mov eax, 3",        
-                    "    mov ebx, 0",        
-                    "    mov ecx, read_buffer",
-                    "    mov edx, 64",       
-                    "    int 0x80",
-                    f"    ; Convertir a flotante y guardar en {var_name}",
-                    "    ; Nota: Esta implementación es simplificada"
+                    f"    ; Leer flotante en {var.valor[1]} (implementación básica)",
+                    "    call read_float",
+                    f"    fstp dword [{var.valor[1]}]"
                 ])
-            elif tipo == 'string':
-                codigo.extend([
-                    f"; Leer string en {var_name}",
-                    "    mov eax, 3",        
-                    "    mov ebx, 0",        
-                    f"    mov ecx, {var_name}",
-                    "    mov edx, 64",       
-                    "    int 0x80",
-                ])
+            elif isinstance(var, NodoIdentificador):
+                tip = 'str'
+                for v, tipo in self.argumentos:
+                    if v[1] == var.nombre[1]:
+                        tip = tipo.__name__
+                if tip == 'int':
+                    codigo.append(f"    call read_int\n    mov [{var.nombre[1]}], eax")
+                elif tip == 'float':
+                    codigo.append(f"    call read_float\n    fstp dword [{var.nombre[1]}]")
+                else:
+                    codigo.extend([
+                        f"    ; Leer string en {var.nombre[1]}",
+                        f"    push dword {var.nombre[1]}",
+                        f"    call read_string"
+                        f"    add esp, 4"
+                    ])
         
         return "\n".join(codigo)
+
+class NodoIncremento(NodoAST):
+    def __init__(self, var, incremento):
+        self.var = var
+        self.incremento = incremento
+    
+    def traducir(self):
+        return f'{self.var+self.incremento}'
+    
+    def generar_codigo(self):
+        if self.incremento == '++':
+            return f'    inc dword [{self.var}]'
+        elif self.incremento == '--':
+            return f'    dec dword [{self.var}]'
 
 class NodoDeclaracion(NodoAST):
     def __init__(self, tipo, nombre, expresion=None):
