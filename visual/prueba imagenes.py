@@ -439,29 +439,26 @@ def load_graph():
                 if linea.strip() != "NODOS:" and nodos_arista == True and nodos_flag == False:
                     flag_node_beggin = True
                     linea_sin_espacios = linea.strip()
+                    print(linea_sin_espacios)
+                    numero_str = ""
                     for i in range(len(linea_sin_espacios)):
                         caracter = linea_sin_espacios[i]
                         nodo_buscado: Node
-                        if len(linea_sin_espacios) == 2:
-                            node_beggin = None
-                            node_final = None
-                            break
-                        elif caracter != "|" and caracter != "," and caracter != "\n" and len(linea_sin_espacios) > 2:
-                            for j in range(len(nodos_a_cargar)):
+                        if caracter != "|" and caracter != "," and caracter != "\n":
+                            numero_str += caracter
 
-                                if nodos_a_cargar[j].id == int(caracter) and flag_node_beggin:
+                        else:
+                            for j in range(len(nodos_a_cargar)):
+                                if nodos_a_cargar[j].id == int(numero_str) and flag_node_beggin:
                                     node_beggin = None
                                     node_beggin = nodos_a_cargar[j]
-
-
                                     flag_node_beggin = False
-                                    break
-                                elif nodos_a_cargar[j].id == int(caracter) and flag_node_beggin == False:
+                                elif nodos_a_cargar[j].id == int(numero_str) and flag_node_beggin == False:
                                     node_final = nodos_a_cargar[j]
                                     a = Connection(node_beggin, node_final)
                                     connections.append(a)
+                            numero_str = ""
 
-                                    break
 
 
 
@@ -506,6 +503,8 @@ def load_graph():
                     create_sshapes = WorkShape(tipo_str_nodo, posicion_x, posicion_y)
                     create_sshapes.set_id(id_nodo_now)
                     create_sshapes.set_new_text(texto_nodo)
+
+
                     work_shapes.append(create_sshapes)
                     nodos_a_cargar.append(create_sshapes)
 
@@ -543,9 +542,7 @@ def compilada():
     functions[0].generate_code_C()
     c_code += functions[0].code_c + "\n\n"
 
-        # These would be uncommented when implemented
-        # graph.generate_code_python()
-        # py_code += graph.code_py + "\n\n"
+    print(c_code)
 
         # graph.generate_code_asm()
         # asm_code += graph.code_asm + "\n\n"
