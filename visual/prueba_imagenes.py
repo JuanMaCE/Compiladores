@@ -1,7 +1,9 @@
 from sys import flags
 import pygame
 import sys
+
 import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import math
 import json
 from tkinter import filedialog
@@ -88,7 +90,7 @@ def cargar_imagenes():
     images = {}
     for shape in SHAPE_TYPES:
         try:
-            image_path = os.path.join(r"C:\Users\DELL\PycharmProjects\Compiladores\images", f"{shape}.png")
+            image_path = os.path.join("/root/URL/compiladores/Compiladores/images", f"{shape}.png")
             image = pygame.image.load(image_path).convert_alpha()
             base_width = 85
             aspect_ratio = image.get_height() / image.get_width()
@@ -376,6 +378,7 @@ def save_graph():
 
     if not file_path:
         return False
+    root.destroy()
 
     try:
 
@@ -416,6 +419,8 @@ def load_graph():
         title="Selecciona un archivo de texto",
         filetypes=(("Archivos de texto", "*.txt"), ("Todos los archivos", "*.*"))
     )
+
+    root.destroy()
 
     if not file_path:  # Si el usuario cancela
         return None

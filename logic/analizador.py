@@ -34,9 +34,9 @@ int x = sumar(4, 5);
 }
 """
 
-def compile_and_run(asm_code):
+def compile_and_run(asm_code, py_code):
     """Compila y ejecuta el código ensamblador"""
-    try:
+    '''try:
         with open("temp.asm", "w") as f:
             f.write(asm_code)
 
@@ -50,7 +50,11 @@ def compile_and_run(asm_code):
     except subprocess.CalledProcessError as e:
         return f"Error de compilación: {e}"
     except Exception as e:
-        return f"Error inesperado: {e}"
+        return f"Error inesperado: {e}"'''
+    
+    with open("tempy.py", "w") as f:
+        f.write(py_code)
+    subprocess.run(["python3", "tempy.py"])
 
 
 def analizar_c(codigo_c):
@@ -79,6 +83,7 @@ def analizar_c(codigo_c):
         print("------------------------------")
         print("Codigo Python")
         codigo_py = [linea.replace('\t', '    ') for linea in codigo_py]
+        codigo_py.append("main()")
         codigo_completo = "\n".join(codigo_py)
         print(codigo_completo)
         print("------------------------------")
@@ -87,7 +92,7 @@ def analizar_c(codigo_c):
         print("------------------------------")
         print("Código Ensamblador Generado:")
         print(codigo_asm)
-        compile_and_run(codigo_asm)
+        compile_and_run(codigo_asm, codigo_completo)
         print("------------------------------")
     except SyntaxError as e:
         print(e)

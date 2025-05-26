@@ -1,0 +1,22 @@
+NODOS:
+0|inicio|Inicio|350|100|0|
+1|proceso|int a |360|196|0|
+2|llamada|a = sumar(4, 5)|370|380|0|
+10|salida|print a|382|492|0|
+11|fin|Fin|411|622|0|
+ARISTAS:
+0|1,
+1|2,
+2|10,
+10|11,
+11|
+NODOS:
+3|inicio|int sumar(int a, int b)|720|117|1|
+5|proceso|int suma = a + b|772|168|1|
+7|proceso|return suma|840|320|1|
+6|fin|Fin|863|475|1|
+ARISTAS:
+3|5,
+5|7,
+7|6,
+6|

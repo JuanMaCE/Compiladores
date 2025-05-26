@@ -1,0 +1,30 @@
+NODOS:
+0|inicio|Inicio|350|100|0|
+11|fin|Fin|411|622|0|
+17|proceso|int x |374|166|0|
+18|proceso|int y|373|265|0|
+19|entrada|leer x|510|239|0|
+20|entrada|leer y|524|328|0|
+21|salida|Salida|5|168|0|
+23|proceso|int a = sumar(x, y)|398|421|0|
+ARISTAS:
+0|17,
+11|
+17|19,
+18|20,
+19|18,
+20|23,
+21|
+23|11,
+NODOS:
+3|inicio|int sumar(int a, int b)|720|117|1|
+5|proceso|int suma = a + b|772|168|1|
+6|fin|Fin|863|475|1|
+22|salida|print suma|872|241|1|
+24|proceso|return suma|815|379|1|
+ARISTAS:
+3|5,
+5|22,
+6|
+22|24,
+24|6,
