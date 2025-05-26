@@ -1,5 +1,4 @@
 from sys import flags
-
 import pygame
 import sys
 import os
@@ -11,6 +10,7 @@ import tkinter as tk
 from tkinter import filedialog
 from logic.node import Node
 from logic.grafodirigdo import Grafodirigido
+from logic.analizador import analizar_c
 
 pygame.init()
 WIDTH, HEIGHT = 1400, 800
@@ -47,7 +47,6 @@ SHAPE_COLORS = {
 id_counter = 0
 id_graph = 0
 functions = []  # Will store Grafodirigido instances
-
 
 def reset_application():
     global id_counter, id_graph, functions, work_shapes, connections, selected_shape, dragging_template, creating_connection, connection_start, active_text_edit
@@ -555,7 +554,7 @@ def compilada():
     texto_panel_derecho = [
         c_code,
     ]
-
+    analizar_c(c_code)
     return texto_panel_derecho
 
 

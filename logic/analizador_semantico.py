@@ -1,5 +1,5 @@
-from AST import *
-from tabla_simbolos import *
+from .AST import *
+from .tabla_simbolos import *
 
 class AnalizadorSemantico:
     def __init__(self):

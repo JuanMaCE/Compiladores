@@ -1,5 +1,5 @@
 import re
-from AST import *
+from .AST import *
 
 # === Analisis Lexico ===
 token_patron = {
@@ -154,6 +154,11 @@ class Parser:
                 if siguiente_token and siguiente_token[1] == '(':
                     instrucciones.append(self.llamar_funcion())
                     self.coincidir('DELIMITER') # ';'
+                elif siguiente_token and siguiente_token[0] == 'OPERATOR':
+                    var = self.obtener_token_actual()[1]
+                    self.coincidir('IDENTIFIER')
+                    incremento = self.operador_abreviado()
+                    instrucciones.append(NodoIncremento(var, incremento))
                 else:
                     instrucciones.append(self.asignacion())
 
@@ -291,14 +296,15 @@ class Parser:
         if not formato_str:
             raise Exception("No se encontró cadena de formato en printf.")
 
-        formatos = formato_str.strip('"').split()
+        formatos = re.findall(r'%(?:lf|d|f|c|s)', formato_str)
 
-        variables = [valor.nombre for valor in argumentos if isinstance(valor, NodoIdentificador)]
+        variables = [valor for valor in argumentos if isinstance(valor, NodoIdentificador)]
 
-        resultado = [(('IDENTIFIER', var), formato_a_tipo_python.get(fmt, None)) for fmt, var in zip(formatos, variables)]
+        resultado = [(var, formato_a_tipo_python.get(fmt, None)) for fmt, var in zip(formatos, variables)]
 
         self.coincidir('DELIMITER')
-        return NodoPrintf(resultado, formato_str)
+
+        return NodoPrintf(resultado, formato_str, argumentos)
 
     def scanf_llamada(self):
         formato_a_tipo_python = {
@@ -331,7 +337,7 @@ class Parser:
         resultado = [(var, formato_a_tipo_python.get(fmt, None)) for fmt, var in zip(formatos, variables)]
 
         self.coincidir('DELIMITER')
-        return NodoScan(resultado)
+        return NodoScan(resultado, argumentos)
 
     def bucle_for(self):
         self.coincidir('KEYWORD')
