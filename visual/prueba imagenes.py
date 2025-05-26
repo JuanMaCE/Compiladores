@@ -439,7 +439,6 @@ def load_graph():
                 if linea.strip() != "NODOS:" and nodos_arista == True and nodos_flag == False:
                     flag_node_beggin = True
                     linea_sin_espacios = linea.strip()
-                    print(linea_sin_espacios)
                     numero_str = ""
                     for i in range(len(linea_sin_espacios)):
                         caracter = linea_sin_espacios[i]
